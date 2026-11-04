@@ -9,6 +9,7 @@ The repository now includes an early App Developer foundation:
 - Responsive landing page and interactive workspace.
 - `POST /api/plan` for structured app planning.
 - `POST /api/generate` for a bounded static web starter containing HTML, CSS, and browser JavaScript.
+- `POST /api/edit` to revise the current starter with another natural-language instruction.
 - Source preview and per-file download in the workspace.
 - Provider adapter boundary for future model replacement.
 - Separate Cloudflare Worker configuration and static asset serving.
