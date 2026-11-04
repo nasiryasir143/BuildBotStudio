@@ -1,5 +1,5 @@
 import type { Env } from "./types";
-import { createBuildPlan, generateStarterProject } from "./agent/planner";
+import { createBuildPlan, generateStarterProject, reviseStarterProject } from "./agent/planner";
 
 const jsonHeaders = {
   "content-type": "application/json; charset=utf-8",
@@ -51,6 +51,45 @@ export default {
         stage: "starter-project-generation",
         ai_configured: Boolean(env.AI && env.AI_MODEL)
       });
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/edit") {
+      const contentLength = Number(request.headers.get("content-length") ?? 0);
+      if (contentLength > 35000) return json({ error: "Project payload is too large." }, 413);
+      let body: unknown;
+      try { body = await request.json(); }
+      catch { return json({ error: "Request body must be valid JSON." }, 400); }
+
+      const record = typeof body === "object" && body !== null ? body as Record<string, unknown> : {};
+      const instruction = record.instruction;
+      const files = record.files;
+      if (typeof instruction !== "string" || !instruction.trim() || instruction.length > 4000) {
+        return json({ error: "Provide an edit instruction of up to 4,000 characters." }, 400);
+      }
+      if (!Array.isArray(files) || files.length < 3 || files.length > 5) {
+        return json({ error: "Provide the current starter project files." }, 400);
+      }
+      const allowed = new Set(["index.html", "styles.css", "app.js", "README.txt", "assets/notes.txt"]);
+      let total = 0;
+      const safeFiles: Array<{ path: string; content: string }> = [];
+      for (const item of files) {
+        if (typeof item !== "object" || item === null) return json({ error: "Invalid project file." }, 400);
+        const file = item as Record<string, unknown>;
+        if (typeof file.path !== "string" || !allowed.has(file.path) || typeof file.content !== "string" || file.content.length > 12000) {
+          return json({ error: "Project contains an unsupported file or oversized content." }, 400);
+        }
+        total += file.content.length;
+        safeFiles.push({ path: file.path, content: file.content });
+      }
+      if (total > 30000 || !["index.html", "styles.css", "app.js"].every(path => safeFiles.some(file => file.path === path))) {
+        return json({ error: "Project files are incomplete or too large." }, 400);
+      }
+      try {
+        const project = await reviseStarterProject(env, instruction.trim(), safeFiles);
+        return json({ ok: true, project });
+      } catch (error) {
+        return providerError(error);
+      }
     }
 
     if (request.method === "POST" && (url.pathname === "/api/plan" || url.pathname === "/api/generate")) {
