@@ -83,7 +83,7 @@ async function hasValidAccessKey(request: Request, env: Env): Promise<boolean> {
   const right = new Uint8Array(b);
   let difference = 0;
   for (let i = 0; i < left.length; i++) difference |= left[i] ^ right[i];
-  return difference === 0 && expected === supplied;
+  return difference === 0;
 }
 
 function withSecurityHeaders(response: Response): Response {
