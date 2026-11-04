@@ -35,7 +35,7 @@ Accepts the same request shape and returns a bounded static web starter with `in
 
 Accepts an edit instruction plus the current allowlisted starter files. It returns complete replacement contents for the required HTML, CSS, and JavaScript files. This is an iterative edit workflow; project state currently lives in the browser session and is not saved to a user account or database.
 
-The current generator is deliberately limited to static browser files. It does not generate server code, install packages, execute generated code, run builds, save projects to a database, or deploy applications.
+The current generator is deliberately limited to static browser files. It does not generate server code, install packages, run builds, save projects to a cloud database, or deploy generated applications.
 
 ## Provider replacement
 
@@ -58,7 +58,7 @@ All model calls go through `BuildPlanProvider`. Add another adapter implementing
 1. Cloud project storage, multi-user accounts, and server-side version history (the current project library is browser-local only).
 2. User authentication and access controls.
 3. Safe isolated build/test runner.
-4. Iterative edit agent that modifies an existing project using explicit file diffs.
+4. Structured file-diff editing and stronger regression checks for existing projects.
 5. Export and deployment workflows.
 6. Website and game development modes.
 
