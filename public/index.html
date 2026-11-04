@@ -19,6 +19,8 @@ input[type=file],select{max-width:100%;background:#0d1320;color:var(--text);bord
 <section class="panel"><label for="idea">What do you want to build?</label><textarea id="idea" maxlength="4000" placeholder="Example: Create a simple task manager with projects, priorities, and a clean mobile layout."></textarea><div class="row"><button id="generateBtn">Generate starter app</button><button class="secondary" id="planBtn">Make a plan first</button></div><p id="status" class="hint" role="status"></p></section>
 <section class="panel" id="result"><div class="eyebrow">Build plan</div><h2 id="summary"></h2><p class="muted" id="type"></p><div id="steps"></div><div id="questions"></div></section>
 <section class="panel" id="generated"><div class="eyebrow">Generated starter project</div><h2 id="projectName"></h2><p class="muted" id="projectSummary"></p><p class="hint">Files are shown as source text and can be downloaded. They are not executed or deployed by this workspace.</p><div id="files"></div>
+<div class="row"><button class="secondary" id="previewBtn">Preview app safely</button></div>
+<div id="previewWrap" style="display:none;margin-top:14px"><p class="hint">Preview runs in an isolated browser frame. It cannot access this workspace's storage or cookies.</p><iframe id="appPreview" title="Generated app preview" sandbox="allow-scripts" referrerpolicy="no-referrer" style="width:100%;height:520px;background:white;border:1px solid var(--line);border-radius:12px"></iframe></div>
 <div class="file" style="margin-top:18px"><label for="editInstruction">Tell BuildBot what to change</label><textarea id="editInstruction" style="min-height:90px" maxlength="4000" placeholder="Example: Add a dark mode toggle and a filter for completed tasks."></textarea><div class="row"><button id="editBtn">Update this app</button><span class="hint">Your current generated files are sent with the edit request.</span></div></div>
 </section>
 <section class="panel" id="projectManager">
@@ -67,6 +69,22 @@ function renderProject(project){
  }
  $('generated').style.display='block';
 }
+function previewProject(){
+ const htmlFile=generatedFiles.find(f=>f.path==='index.html');
+ const cssFile=generatedFiles.find(f=>f.path==='styles.css');
+ const jsFile=generatedFiles.find(f=>f.path==='app.js');
+ if(!htmlFile||!cssFile||!jsFile){status.textContent='Project preview needs index.html, styles.css, and app.js.';return;}
+ let html=htmlFile.content;
+ const css='<style>'+cssFile.content.replace(/<\\/style/gi,'<\\\\/style')+'</style>';
+ const script='<script>'+jsFile.content.replace(/<\\/script/gi,'<\\\\/script')+'<\\/script>';
+ const policy='<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src data: blob:; style-src \'unsafe-inline\'; script-src \'unsafe-inline\'; connect-src \'none\'; form-action \'none\'; base-uri \'none\'>";
+ if(/<head[^>]*>/i.test(html)) html=html.replace(/<head[^>]*>/i,match=>match+policy+css);
+ else html=policy+css+html;
+ if(/<\\/body>/i.test(html)) html=html.replace(/<\\/body>/i,script+'</body>');
+ else html+=script;
+ $('appPreview').srcdoc=html;$('previewWrap').style.display='block';
+}
+$('previewBtn').addEventListener('click',previewProject);
 function downloadFile(file){
  const blob=new Blob([file.content],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);
  const a=document.createElement('a');a.href=url;a.download=file.path.split('/').pop();a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
