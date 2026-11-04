@@ -9,6 +9,9 @@
 .shell{max-width:1000px;margin:auto;padding:20px}.top{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #ffffff14;padding:4px 0 18px}.brand{font-weight:800;letter-spacing:-.03em}.mark{display:inline-grid;place-items:center;background:linear-gradient(135deg,var(--a),var(--c));color:#111522;border-radius:10px;width:30px;height:30px;margin-right:9px}
 .pill{border:1px solid var(--line);border-radius:30px;padding:5px 10px;color:var(--muted);font-size:12px}.hero{padding:42px 0 20px}.eyebrow{color:var(--c);font-size:11px;letter-spacing:.16em;font-weight:800;text-transform:uppercase}h1{font-size:clamp(34px,7vw,56px);line-height:1.08;letter-spacing:-.06em;margin:12px 0}.muted{color:var(--muted)}.panel{background:linear-gradient(145deg,#171f31,#111725);border:1px solid var(--line);border-radius:18px;padding:20px;margin:18px 0}
 label{display:block;font-weight:700;margin-bottom:9px}textarea{width:100%;min-height:132px;resize:vertical;border:1px solid #39445e;border-radius:12px;background:#0d1320;color:var(--text);padding:14px;font:inherit;outline:none}textarea:focus{border-color:var(--a)}.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:14px}button{border:0;border-radius:11px;padding:12px 18px;font:inherit;font-weight:800;background:linear-gradient(110deg,var(--a),var(--c));color:#10131d;cursor:pointer}button.secondary{background:#ffffff0b;color:var(--text);border:1px solid var(--line)}button:disabled{opacity:.55;cursor:wait}.hint{font-size:12px;color:var(--muted)}.step,.file{border:1px solid var(--line);background:#ffffff06;border-radius:12px;padding:14px;margin:10px 0}.step strong{display:block;margin-bottom:4px}.error{color:#ffb2b2}.foot{padding:24px 0;color:var(--muted);font-size:12px}#result,#generated{display:none}pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:300px;overflow:auto;background:#090d16;border:1px solid var(--line);padding:12px;border-radius:9px;color:#d5dcef;font-size:12px}.filehead{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}.filehead button{padding:7px 10px;font-size:12px}
+input[type=file],select{max-width:100%;background:#0d1320;color:var(--text);border:1px solid #39445e;border-radius:9px;padding:10px}
+.manager{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.manager button{padding:9px 12px;font-size:13px}
+
 </style></head>
 <body><main class="shell">
 <header class="top"><div class="brand"><span class="mark">B</span>BuildBot Studio</div><span class="pill">App Developer · Early Access</span></header>
@@ -17,6 +20,13 @@ label{display:block;font-weight:700;margin-bottom:9px}textarea{width:100%;min-he
 <section class="panel" id="result"><div class="eyebrow">Build plan</div><h2 id="summary"></h2><p class="muted" id="type"></p><div id="steps"></div><div id="questions"></div></section>
 <section class="panel" id="generated"><div class="eyebrow">Generated starter project</div><h2 id="projectName"></h2><p class="muted" id="projectSummary"></p><p class="hint">Files are shown as source text and can be downloaded. They are not executed or deployed by this workspace.</p><div id="files"></div>
 <div class="file" style="margin-top:18px"><label for="editInstruction">Tell BuildBot what to change</label><textarea id="editInstruction" style="min-height:90px" maxlength="4000" placeholder="Example: Add a dark mode toggle and a filter for completed tasks."></textarea><div class="row"><button id="editBtn">Update this app</button><span class="hint">Your current generated files are sent with the edit request.</span></div></div>
+</section>
+<section class="panel" id="projectManager">
+<div class="eyebrow">Local project library</div><h2>Your projects</h2>
+<p class="muted">Projects are saved on this device's browser. They are not synced to an account or cloud yet. Export a backup before clearing browser data.</p>
+<div class="manager"><select id="projectSelect" aria-label="Saved projects"><option value="">No saved projects yet</option></select><button class="secondary" id="saveProject">Save current</button><button class="secondary" id="newProject">New project</button></div>
+<div class="manager" style="margin-top:12px"><button class="secondary" id="exportProject">Export backup</button><label class="secondary" style="display:inline-block;padding:9px 12px;border:1px solid var(--line);border-radius:11px;cursor:pointer">Import backup<input id="importProject" type="file" accept="application/json,.json" hidden></label><span id="libraryStatus" class="hint"></span></div>
+<div id="versionList" class="hint" style="margin-top:12px"></div>
 </section>
 <div class="foot">Early development: this stage generates static HTML/CSS/JavaScript starter files. Persistent accounts, cloud project saving, safe build/test sandbox, edit history, and publishing are not active yet. AI use depends on provider quotas.</div>
 </main>
@@ -77,5 +87,70 @@ $('editBtn').addEventListener('click',async()=>{
  }catch(error){status.className='hint error';status.textContent=error.message;}
  finally{$('editBtn').disabled=false;}
 });
+
+const STORE_KEY='buildbotstudio.projects.v1';
+let activeProjectId='';
+let projectHistory=[];
+function readLibrary(){try{const value=JSON.parse(localStorage.getItem(STORE_KEY)||'[]');return Array.isArray(value)?value.filter(p=>p&&typeof p.id==='string'&&Array.isArray(p.files)):[];}catch{return [];}}
+function writeLibrary(items){try{localStorage.setItem(STORE_KEY,JSON.stringify(items));return true;}catch{return false;}}
+function safeProjectName(name){return String(name||'Untitled project').slice(0,80);}
+function renderLibrary(){
+ const items=readLibrary(),select=$('projectSelect'),previous=activeProjectId;
+ select.replaceChildren();const blank=document.createElement('option');blank.value='';blank.textContent=items.length?'Select a saved project':'No saved projects yet';select.append(blank);
+ for(const p of items){const option=document.createElement('option');option.value=p.id;option.textContent=safeProjectName(p.name);select.append(option);}
+ if(items.some(p=>p.id===previous))select.value=previous;
+ renderHistory();
+}
+function renderHistory(){
+ const host=$('versionList');host.replaceChildren();
+ if(!projectHistory.length){host.textContent='No saved version history for this session yet.';return;}
+ const label=document.createElement('strong');label.textContent='Recent versions: ';host.append(label);
+ projectHistory.slice(-5).reverse().forEach((snapshot,index)=>{
+  const btn=document.createElement('button');btn.className='secondary';btn.style.margin='4px';btn.textContent='Restore '+(projectHistory.length-index);
+  btn.addEventListener('click',()=>{const chosen=projectHistory[projectHistory.length-1-index];if(chosen){renderProject(JSON.parse(JSON.stringify(chosen)));$('libraryStatus').textContent='Version restored in the editor. Save current to keep it.';}});
+  host.append(btn);
+ });
+}
+function takeSnapshot(){if(generatedFiles.length){projectHistory.push({name:$('projectName').textContent,summary:$('projectSummary').textContent,files:JSON.parse(JSON.stringify(generatedFiles))});if(projectHistory.length>10)projectHistory.shift();renderHistory();}}
+const originalRenderProject=renderProject;
+renderProject=function(project){takeSnapshot();originalRenderProject(project);};
+$('saveProject').addEventListener('click',()=>{
+ if(!generatedFiles.length){$('libraryStatus').textContent='Generate or import an app first.';return;}
+ const items=readLibrary(),existing=items.find(p=>p.id===activeProjectId);
+ const record={id:activeProjectId||('p'+Date.now().toString(36)+Math.random().toString(36).slice(2,7)),name:safeProjectName($('projectName').textContent),summary:String($('projectSummary').textContent||'').slice(0,1000),files:generatedFiles.map(f=>({path:f.path,content:f.content})),updatedAt:new Date().toISOString()};
+ if(existing)items[items.indexOf(existing)]=record;else items.push(record);
+ if(!writeLibrary(items)){$('libraryStatus').textContent='Browser storage is full. Export or remove old projects.';return;}
+ activeProjectId=record.id;$('libraryStatus').textContent='Saved on this device.';renderLibrary();
+});
+$('projectSelect').addEventListener('change',()=>{
+ const item=readLibrary().find(p=>p.id===$('projectSelect').value);if(!item)return;
+ activeProjectId=item.id;projectHistory=[];
+ renderProject({name:item.name,summary:item.summary,files:item.files});
+ $('libraryStatus').textContent='Project loaded from this device.';
+});
+$('newProject').addEventListener('click',()=>{
+ activeProjectId='';projectHistory=[];generatedFiles=[];
+ $('projectName').textContent='';$('projectSummary').textContent='';$('files').replaceChildren();$('generated').style.display='none';$('result').style.display='none';idea.value='';$('libraryStatus').textContent='New workspace ready.';renderLibrary();
+});
+$('exportProject').addEventListener('click',()=>{
+ if(!generatedFiles.length){$('libraryStatus').textContent='Load or generate a project first.';return;}
+ const backup={format:'BuildBotStudioProject',version:1,name:$('projectName').textContent,summary:$('projectSummary').textContent,files:generatedFiles};
+ const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob);
+ const a=document.createElement('a');a.href=url;a.download=(safeProjectName(backup.name).replace(/[^a-z0-9-_]+/gi,'-')||'buildbot-project')+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+});
+$('importProject').addEventListener('change',async(event)=>{
+ const file=event.target.files&&event.target.files[0];if(!file)return;
+ if(file.size>150000){$('libraryStatus').textContent='Backup is too large (150 KB maximum).';event.target.value='';return;}
+ try{
+  const data=JSON.parse(await file.text()),allowed=new Set(['index.html','styles.css','app.js','README.txt','assets/notes.txt']);
+  if(data.format!=='BuildBotStudioProject'||!Array.isArray(data.files)||data.files.length<3||data.files.length>5)throw new Error('This is not a valid BuildBot Studio backup.');
+  let total=0;const files=data.files.map(f=>{if(!f||!allowed.has(f.path)||typeof f.content!=='string'||f.content.length>12000)throw new Error('Backup contains an unsupported file.');total+=f.content.length;return {path:f.path,content:f.content};});
+  if(total>30000||!['index.html','styles.css','app.js'].every(path=>files.some(f=>f.path===path)))throw new Error('Backup files are incomplete or too large.');
+  projectHistory=[];activeProjectId='';renderProject({name:safeProjectName(data.name),summary:String(data.summary||'Imported project').slice(0,1000),files});$('libraryStatus').textContent='Backup imported. Select Save current to keep it in your library.';
+ }catch(error){$('libraryStatus').textContent=error.message||'Could not import backup.';}
+ event.target.value='';
+});
+renderLibrary();
+
 
 </script></body></html>
