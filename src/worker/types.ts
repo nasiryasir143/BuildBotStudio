@@ -16,6 +16,7 @@ export interface AI {
 export interface Env {
   AI?: AI;
   AI_MODEL?: string;
+  APP_ACCESS_KEY?: string;
   ASSETS?: { fetch(request: Request): Promise<Response> };
 }
 
