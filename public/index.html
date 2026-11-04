@@ -15,8 +15,10 @@ label{display:block;font-weight:700;margin-bottom:9px}textarea{width:100%;min-he
 <section class="hero"><div class="eyebrow">Your AI development workspace</div><h1>Turn your idea into a <span style="background:linear-gradient(90deg,#aa9fff,#72e4db);background-clip:text;color:transparent">real starter app.</span></h1><p class="muted">Describe what you want. BuildBot can outline the work or generate a downloadable static web starter.</p></section>
 <section class="panel"><label for="idea">What do you want to build?</label><textarea id="idea" maxlength="4000" placeholder="Example: Create a simple task manager with projects, priorities, and a clean mobile layout."></textarea><div class="row"><button id="generateBtn">Generate starter app</button><button class="secondary" id="planBtn">Make a plan first</button></div><p id="status" class="hint" role="status"></p></section>
 <section class="panel" id="result"><div class="eyebrow">Build plan</div><h2 id="summary"></h2><p class="muted" id="type"></p><div id="steps"></div><div id="questions"></div></section>
-<section class="panel" id="generated"><div class="eyebrow">Generated starter project</div><h2 id="projectName"></h2><p class="muted" id="projectSummary"></p><p class="hint">Files are shown as source text and can be downloaded. They are not executed or deployed by this workspace.</p><div id="files"></div><div class="row"><button class="secondary" id="downloadAll">Download all files (.zip not available yet)</button></div></section>
-<div class="foot">Early development: this stage generates static HTML/CSS/JavaScript starter files. Persistent accounts, project saving, safe build/test sandbox, editing history, and publishing are not active yet. AI use depends on provider quotas.</div>
+<section class="panel" id="generated"><div class="eyebrow">Generated starter project</div><h2 id="projectName"></h2><p class="muted" id="projectSummary"></p><p class="hint">Files are shown as source text and can be downloaded. They are not executed or deployed by this workspace.</p><div id="files"></div>
+<div class="file" style="margin-top:18px"><label for="editInstruction">Tell BuildBot what to change</label><textarea id="editInstruction" style="min-height:90px" maxlength="4000" placeholder="Example: Add a dark mode toggle and a filter for completed tasks."></textarea><div class="row"><button id="editBtn">Update this app</button><span class="hint">Your current generated files are sent with the edit request.</span></div></div>
+<div class="row"><button class="secondary" id="downloadAll">Download all source files separately</button></div></section>
+<div class="foot">Early development: this stage generates static HTML/CSS/JavaScript starter files. Persistent accounts, cloud project saving, safe build/test sandbox, edit history, and publishing are not active yet. AI use depends on provider quotas.</div>
 </main>
 <script>
 const $=id=>document.getElementById(id);
@@ -44,21 +46,25 @@ $('planBtn').addEventListener('click',async()=>{
  $('result').style.display='block';
 });
 let generatedFiles=[];
-function downloadFile(file){
+function renderProject(project){\n generatedFiles=project.files;\n $('projectName').textContent=project.name;$('projectSummary').textContent=project.summary;\n const host=$('files');host.replaceChildren();\n for(const file of generatedFiles){\n  const card=document.createElement('div');card.className='file';const head=document.createElement('div');head.className='filehead';\n  const name=document.createElement('strong');name.textContent=file.path;const button=document.createElement('button');button.className='secondary';button.textContent='Download file';button.addEventListener('click',()=>downloadFile(file));\n  const pre=document.createElement('pre');pre.textContent=file.content;head.append(name,button);card.append(head,pre);host.append(card);\n }\n $('generated').style.display='block';\n}\nfunction downloadFile(file){
  const blob=new Blob([file.content],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);
  const a=document.createElement('a');a.href=url;a.download=file.path.split('/').pop();a.click();URL.revokeObjectURL(url);
 }
 $('generateBtn').addEventListener('click',async()=>{
  const data=await callApi('/api/generate');if(!data)return;
- const project=data.project;generatedFiles=project.files;
- $('projectName').textContent=project.name;$('projectSummary').textContent=project.summary;
- const host=$('files');host.replaceChildren();
- for(const file of generatedFiles){
-  const card=document.createElement('div');card.className='file';const head=document.createElement('div');head.className='filehead';
-  const name=document.createElement('strong');name.textContent=file.path;const button=document.createElement('button');button.className='secondary';button.textContent='Download file';button.addEventListener('click',()=>downloadFile(file));
-  const pre=document.createElement('pre');pre.textContent=file.content;head.append(name,button);card.append(head,pre);host.append(card);
- }
- $('generated').style.display='block';
+ renderProject(data.project);
 });
-$('downloadAll').addEventListener('click',()=>{for(const file of generatedFiles)downloadFile(file);});
+$('downloadAll').addEventListener('click',()=>{for(const file of generatedFiles)downloadFile(file);});\n$('editBtn').addEventListener('click',async()=>{
+ const instruction=$('editInstruction').value.trim();
+ if(!instruction){status.textContent='Describe the change you want to make.';return;}
+ if(!generatedFiles.length){status.textContent='Generate a starter app first.';return;}
+ $('editBtn').disabled=true;status.className='hint';status.textContent='Updating your project…';
+ try{
+  const response=await fetch('/api/edit',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({instruction,files:generatedFiles})});
+  const data=await response.json();if(!response.ok)throw new Error(data.error||'Edit request failed.');
+  renderProject(data.project);$('editInstruction').value='';status.textContent='Project updated. Review the new files and download them.';
+ }catch(error){status.className='hint error';status.textContent=error.message;}
+ finally{$('editBtn').disabled=false;}
+});
+
 </script></body></html>
