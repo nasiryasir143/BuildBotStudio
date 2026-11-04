@@ -1,43 +1,60 @@
 # BuildBot Studio — Architecture
 
-## Current foundation
+## Implemented foundation
 
-The repository now contains a static landing page and a small Cloudflare Worker API foundation.
+- `public/index.html`: mobile-first workspace with plan and starter-generation actions.
+- `src/worker/index.ts`: HTTP routes, input validation, and static asset fallback.
+- `src/worker/agent/planner.ts`: provider selection and agent orchestration.
+- `src/worker/providers/provider.ts`: provider-neutral plan and generation contract.
+- `src/worker/providers/cloudflare-ai.ts`: first AI adapter, bounded plan generation, and bounded static starter-file generation.
+- `src/worker/types.ts`: shared contracts.
+- `wrangler.toml`: separate Worker configuration with AI and static assets bindings.
 
-- `src/worker/index.ts`: HTTP routes and request validation.
-- `src/worker/agent/planner.ts`: provider selection and planning orchestration.
-- `src/worker/providers/provider.ts`: provider-neutral contract.
-- `src/worker/providers/cloudflare-ai.ts`: first provider adapter.
-- `src/worker/types.ts`: shared types.
+## API
 
-## First API routes
+### `GET /api/health`
 
-- `GET /api/health` reports service status and whether an AI binding/model is configured.
-- `POST /api/plan` accepts `{ "instruction": "..." }` and returns a structured app plan.
+Returns service name, stage, and whether the AI binding/model are configured. This is a configuration check, not a live model health test.
 
-The plan route does not generate or execute application code yet. It is the first agent workflow only.
+### `POST /api/plan`
 
-## Planned next modules
+Request:
 
-1. Project workspace and versioned file storage.
-2. Code-generation agent that creates files from an approved plan.
-3. Build/test adapter running in a separate, isolated sandbox.
-4. Project export and deployment workflow.
-5. Website and game development modes.
+```json
+{ "instruction": "Create a simple task manager" }
+```
+
+Returns a structured project plan.
+
+### `POST /api/generate`
+
+Accepts the same request shape and returns a bounded static web starter with `index.html`, `styles.css`, and `app.js`. Generated files are returned as source text and can be downloaded from the workspace.
+
+The current generator is deliberately limited to static browser files. It does not generate server code, install packages, execute generated code, run builds, save projects to a database, or deploy applications.
 
 ## Provider replacement
 
-All model calls must go through `BuildPlanProvider`. Add a new adapter implementing that interface and change provider selection in `getPlanProvider`; do not put provider-specific calls in route handlers or UI code.
+All model calls go through `BuildPlanProvider`. Add another adapter implementing `createPlan` and `generateProject`, then change provider selection in `getPlanProvider`. Do not put provider-specific calls in route handlers or UI code.
 
-## Security requirements
+## Security boundaries
 
+- Generated code is treated as untrusted text. The workspace displays and downloads it but never executes it.
+- The generator only accepts a small allowlist of file paths and applies per-file and total-size limits.
 - Never execute generated code inside the API Worker.
-- Run builds and tests only in a separately isolated sandbox with resource limits.
+- Build and test only in a separately isolated sandbox with resource limits and no ambient secrets.
 - Never expose provider credentials to the browser.
-- Validate request sizes and all generated structured output.
-- Add authentication, rate limiting, quotas, and abuse protection before public launch.
-- Do not store user projects in process memory; use a persistent database/object store with per-user access controls.
+- Before public deployment, add authentication, rate limiting, per-user quotas, abuse controls, and persistent project ownership.
+- Do not expose an unauthenticated generation endpoint to the public internet without those controls.
+
+## Planned modules
+
+1. Persistent project storage and version history.
+2. User authentication and access controls.
+3. Safe isolated build/test runner.
+4. Iterative edit agent that modifies an existing project using explicit file diffs.
+5. Export and deployment workflows.
+6. Website and game development modes.
 
 ## Cost and availability
 
-A free-tier provider may have quotas, model availability restrictions, and changing limits. Do not promise unlimited free generation. Configure provider and model identifiers outside application logic.
+Free-tier AI providers have quotas, model availability restrictions, and changing limits. Unlimited free generation is not promised. Provider and model identifiers must remain configurable.
