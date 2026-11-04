@@ -2,8 +2,9 @@
 
 ## Implemented foundation
 
-- `public/index.html`: mobile-first workspace with plan and starter-generation actions.
-- `src/worker/index.ts`: HTTP routes, input validation, and static asset fallback.
+- `public/index.html`: mobile-first workspace with plan, generation, revision, sandbox preview, and local project library UI.
+- `public/access.js`: session-only owner key prompt and API request header.
+- `src/worker/index.ts`: bounded request parsing, owner-key protection, security headers, API routes, and static asset fallback.
 - `src/worker/agent/planner.ts`: provider selection and agent orchestration.
 - `src/worker/providers/provider.ts`: provider-neutral plan and generation contract.
 - `src/worker/providers/cloudflare-ai.ts`: first AI adapter, bounded plan generation, and bounded static starter-file generation.
@@ -38,12 +39,14 @@ The current generator is deliberately limited to static browser files. It does n
 
 ## Provider replacement
 
-All model calls go through `BuildPlanProvider`. Add another adapter implementing `createPlan` and `generateProject`, then change provider selection in `getPlanProvider`. Do not put provider-specific calls in route handlers or UI code.
+All model calls go through `BuildPlanProvider`. Add another adapter implementing `createPlan`, `generateProject`, and `reviseProject`, then change provider selection in `getPlanProvider`. Do not put provider-specific calls in route handlers or UI code.
 
 ## Security boundaries
 
 - Generated code is treated as untrusted text. The workspace displays and downloads it but never executes it.
 - The generator only accepts a small allowlist of file paths and applies per-file and total-size limits.
+- AI routes require the `APP_ACCESS_KEY` Worker secret. The key is sent in a request header and kept in browser session storage by the UI.
+- The current key is a single shared owner key, not multi-user authentication. Apply rate limits before broad public access.
 - Never execute generated code inside the API Worker.
 - Build and test only in a separately isolated sandbox with resource limits and no ambient secrets.
 - Never expose provider credentials to the browser.
@@ -52,7 +55,7 @@ All model calls go through `BuildPlanProvider`. Add another adapter implementing
 
 ## Planned modules
 
-1. Persistent project storage and version history.
+1. Cloud project storage, multi-user accounts, and server-side version history (the current project library is browser-local only).
 2. User authentication and access controls.
 3. Safe isolated build/test runner.
 4. Iterative edit agent that modifies an existing project using explicit file diffs.
