@@ -75,12 +75,13 @@ function previewProject(){
  const jsFile=generatedFiles.find(f=>f.path==='app.js');
  if(!htmlFile||!cssFile||!jsFile){status.textContent='Project preview needs index.html, styles.css, and app.js.';return;}
  let html=htmlFile.content;
- const css='<style>'+cssFile.content.replace(/<\\/style/gi,'<\\\\/style')+'</style>';
- const script='<script>'+jsFile.content.replace(/<\\/script/gi,'<\\\\/script')+'<\\/script>';
+ const css='<style>'+cssFile.content.replace(/<\/style/gi,'<\\/style')+'</style>';
+ const closingTag=String.fromCharCode(60)+'/script>';
+ const script='<script>'+jsFile.content.replace(/<\/script/gi,'<\\/script')+closingTag;
  const policy='<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src data: blob:; style-src \'unsafe-inline\'; script-src \'unsafe-inline\'; connect-src \'none\'; form-action \'none\'; base-uri \'none\'>";
  if(/<head[^>]*>/i.test(html)) html=html.replace(/<head[^>]*>/i,match=>match+policy+css);
  else html=policy+css+html;
- if(/<\\/body>/i.test(html)) html=html.replace(/<\\/body>/i,script+'</body>');
+ if(/<\/body>/i.test(html)) html=html.replace(/<\/body>/i,script+'</body>');
  else html+=script;
  $('appPreview').srcdoc=html;$('previewWrap').style.display='block';
 }
