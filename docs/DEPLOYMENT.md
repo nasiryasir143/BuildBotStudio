@@ -1,46 +1,46 @@
 # Deployment checklist — separate service only
 
-This guide is for the new `buildbot-studio-api` Worker defined in this repository.
+This repository is configured for a new Cloudflare Worker named `buildbot-studio-api`. It is separate from the existing `100days` Worker.
 
-## Before deploying
+## Before pressing Deploy
 
-1. Confirm the Cloudflare account and project you intend to use.
-2. Keep the existing `100days` Worker and its settings untouched.
-3. Review `wrangler.toml`; its Worker name must remain `buildbot-studio-api`.
-4. Confirm the AI binding is available to this new Worker in your Cloudflare account.
-5. Install dependencies and run the TypeScript check locally.
+1. Open the Cloudflare account and choose the intended account.
+2. Create or connect a NEW Worker for this repository. Do not select or overwrite `100days`.
+3. Confirm the deployment configuration reads this repository's `wrangler.toml` and the Worker name is exactly `buildbot-studio-api`.
+4. Confirm the Workers AI binding named `AI` is enabled for this new Worker. The binding in the existing `100days` Worker is not shared automatically.
+5. In this new Worker, open **Settings → Variables and Secrets** and add a secret named exactly `APP_ACCESS_KEY`. Use a long, unique password-like value and keep it private. Do not put it in `wrangler.toml`, GitHub, or chat.
+6. Save the secret before testing generation. The API intentionally refuses AI requests until this secret exists.
 
-## Deploy from this repository
+## Deploy
 
-From the repository root on a computer or compatible development environment:
+After the above checks, press Deploy in the Cloudflare deployment screen. If Cloudflare shows a Worker name other than `buildbot-studio-api`, stop and correct it before deploying.
+
+If using a local development environment instead:
 
 ```sh
 npm install
 npm run typecheck
-npx wrangler login
 npx wrangler deploy
 ```
 
-Wrangler should create/update the Worker named `buildbot-studio-api`, not the existing `100days` service. Stop if Wrangler shows a different Worker name or unexpected account.
+## First use
 
-## Verify after deployment
+1. Open the new Worker URL.
+2. Enter the same `APP_ACCESS_KEY` value in the Owner access key field. It is held in browser session storage only.
+3. Open `/api/health` to confirm the service responds and reports AI configuration.
+4. Try a small planning request before asking it to generate an app.
 
-Open the new Worker URL:
+The health route reports configuration presence; it does not guarantee that the selected model will answer successfully.
 
-- `/api/health` — configuration status.
-- `/` — workspace UI (the static asset fallback should serve `index.html`).
-- Use the workspace to request a plan and a static starter project.
+## Current scope and important limits
 
-The health endpoint only confirms that the binding and model setting are present; it does not prove the model can successfully answer.
+- App projects and snapshots are stored in the current browser's local storage only. They are not cloud-synced and are not user accounts. Export JSON backups before clearing browser data.
+- Generated projects are static HTML/CSS/JavaScript. The workspace can preview them in a sandboxed browser frame and download the source files.
+- The API does not execute generated code, install packages, run arbitrary builds, or publish generated apps.
+- `APP_ACCESS_KEY` is a single shared owner key, not a multi-user authentication system. Do not share it publicly.
+- Add Cloudflare rate limiting and stronger user authentication before inviting other people or publishing the service broadly.
+- AI usage is subject to current Workers AI model availability, account limits, and pricing. Free usage is not unlimited or guaranteed.
 
-## Important safety and cost notes
+## Deployment status
 
-The current generation API has no user authentication or per-user quota. Do not publish it as an unrestricted public service. Add authentication, rate limiting, abuse protection, and usage limits first.
-
-Generated project files are returned as text for review and download. They are not run by the Worker. A future build/test feature must use a separate isolated sandbox.
-
-Cloudflare AI usage is subject to current account quotas, model availability, and platform terms. Free usage is not unlimited or guaranteed.
-
-## Current deployment status
-
-Deployment has **not** been performed from this repository. No Cloudflare Worker or existing service has been changed by these GitHub commits.
+No Cloudflare deployment has been performed by these repository changes. The existing `100days` Worker has not been changed.
