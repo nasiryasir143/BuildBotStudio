@@ -14,3 +14,7 @@ export async function createBuildPlan(
 ): Promise<BuildPlan> {
   return getPlanProvider(env).createPlan(instruction);
 }
+
+export async function generateStarterProject(env: Env, instruction: string) {
+  return getPlanProvider(env).generateProject(instruction);
+}
