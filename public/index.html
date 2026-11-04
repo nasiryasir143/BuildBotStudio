@@ -17,7 +17,7 @@ label{display:block;font-weight:700;margin-bottom:9px}textarea{width:100%;min-he
 <section class="panel" id="result"><div class="eyebrow">Build plan</div><h2 id="summary"></h2><p class="muted" id="type"></p><div id="steps"></div><div id="questions"></div></section>
 <section class="panel" id="generated"><div class="eyebrow">Generated starter project</div><h2 id="projectName"></h2><p class="muted" id="projectSummary"></p><p class="hint">Files are shown as source text and can be downloaded. They are not executed or deployed by this workspace.</p><div id="files"></div>
 <div class="file" style="margin-top:18px"><label for="editInstruction">Tell BuildBot what to change</label><textarea id="editInstruction" style="min-height:90px" maxlength="4000" placeholder="Example: Add a dark mode toggle and a filter for completed tasks."></textarea><div class="row"><button id="editBtn">Update this app</button><span class="hint">Your current generated files are sent with the edit request.</span></div></div>
-<div class="row"><button class="secondary" id="downloadAll">Download all source files separately</button></div></section>
+</section>
 <div class="foot">Early development: this stage generates static HTML/CSS/JavaScript starter files. Persistent accounts, cloud project saving, safe build/test sandbox, edit history, and publishing are not active yet. AI use depends on provider quotas.</div>
 </main>
 <script>
@@ -59,13 +59,12 @@ function renderProject(project){
 }
 function downloadFile(file){
  const blob=new Blob([file.content],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);
- const a=document.createElement('a');a.href=url;a.download=file.path.split('/').pop();a.click();URL.revokeObjectURL(url);
+ const a=document.createElement('a');a.href=url;a.download=file.path.split('/').pop();a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 $('generateBtn').addEventListener('click',async()=>{
  const data=await callApi('/api/generate');if(!data)return;
  renderProject(data.project);
 });
-$('downloadAll').addEventListener('click',()=>{for(const file of generatedFiles)downloadFile(file);});
 $('editBtn').addEventListener('click',async()=>{
  const instruction=$('editInstruction').value.trim();
  if(!instruction){status.textContent='Describe the change you want to make.';return;}
