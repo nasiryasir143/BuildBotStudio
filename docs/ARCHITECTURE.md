@@ -30,6 +30,10 @@ Returns a structured project plan.
 
 Accepts the same request shape and returns a bounded static web starter with `index.html`, `styles.css`, and `app.js`. Generated files are returned as source text and can be downloaded from the workspace.
 
+### `POST /api/edit`
+
+Accepts an edit instruction plus the current allowlisted starter files. It returns complete replacement contents for the required HTML, CSS, and JavaScript files. This is an iterative edit workflow; project state currently lives in the browser session and is not saved to a user account or database.
+
 The current generator is deliberately limited to static browser files. It does not generate server code, install packages, execute generated code, run builds, save projects to a database, or deploy applications.
 
 ## Provider replacement
