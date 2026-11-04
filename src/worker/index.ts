@@ -70,6 +70,22 @@ function providerError(error: unknown): Response {
   return json({ error: "The AI request could not be completed. Please try again later." }, 502);
 }
 
+async function hasValidAccessKey(request: Request, env: Env): Promise<boolean> {
+  const expected = env.APP_ACCESS_KEY;
+  const supplied = request.headers.get("x-app-access-key") ?? "";
+  if (!expected || !supplied || expected.length > 256 || supplied.length > 256) return false;
+  const encoder = new TextEncoder();
+  const [a, b] = await Promise.all([
+    crypto.subtle.digest("SHA-256", encoder.encode(expected)),
+    crypto.subtle.digest("SHA-256", encoder.encode(supplied))
+  ]);
+  const left = new Uint8Array(a);
+  const right = new Uint8Array(b);
+  let difference = 0;
+  for (let i = 0; i < left.length; i++) difference |= left[i] ^ right[i];
+  return difference === 0 && expected === supplied;
+}
+
 function withSecurityHeaders(response: Response): Response {
   const headers = new Headers(response.headers);
   headers.set("x-content-type-options", "nosniff");
@@ -93,6 +109,15 @@ export default {
         ai_configured: Boolean(env.AI && env.AI_MODEL)
       });
       return withSecurityHeaders(response);
+    }
+
+    if (request.method === "POST" && ["/api/edit", "/api/plan", "/api/generate"].includes(url.pathname)) {
+      if (!env.APP_ACCESS_KEY) {
+        return withSecurityHeaders(json({ error: "Workspace is locked until the owner configures the APP_ACCESS_KEY secret in Worker settings." }, 503));
+      }
+      if (!(await hasValidAccessKey(request, env))) {
+        return withSecurityHeaders(json({ error: "Access key required or incorrect." }, 401));
+      }
     }
 
     if (request.method === "POST" && url.pathname === "/api/edit") {
