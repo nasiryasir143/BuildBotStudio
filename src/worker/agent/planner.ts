@@ -18,3 +18,11 @@ export async function createBuildPlan(
 export async function generateStarterProject(env: Env, instruction: string) {
   return getPlanProvider(env).generateProject(instruction);
 }
+
+export async function reviseStarterProject(
+  env: Env,
+  instruction: string,
+  files: import("../types").GeneratedFile[]
+) {
+  return getPlanProvider(env).reviseProject(instruction, files);
+}
