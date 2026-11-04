@@ -80,7 +80,7 @@ function previewProject(){
  html=html.replace(/<script\b[^>]*src=["'][^"']*app\.js[^"']*["'][^>]*>\s*<\/script>/gi,'');
  const css='<style>'+cssFile.content.replace(/<\/style/gi,'<\\/style')+'</style>';
  const closingTag=String.fromCharCode(60)+'/script>';
- const script='<script>'+jsFile.content.replace(/<\/script/gi,'<\\/script')+closingTag;
+ const script='<script>'+jsFile.content.replace(new RegExp('<'+String.fromCharCode(47)+'script','gi'),'<\\/script')+closingTag;
  const policy='<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src data: blob:; style-src \'unsafe-inline\'; script-src \'unsafe-inline\'; connect-src \'none\'; form-action \'none\'; base-uri \'none\'>";
  if(/<head[^>]*>/i.test(html)) html=html.replace(/<head[^>]*>/i,match=>match+policy+css);
  else html=policy+css+html;
