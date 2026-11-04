@@ -1,0 +1,12 @@
+name = "buildbot-studio-api"
+main = "src/worker/index.ts"
+compatibility_date = "2026-10-01"
+
+[ai]
+binding = "AI"
+
+[vars]
+AI_MODEL = "@cf/meta/llama-3.1-8b-instruct"
+
+# This is a NEW, separate Worker configuration.
+# It does not modify or deploy the existing 100days Worker.
