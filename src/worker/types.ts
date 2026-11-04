@@ -30,3 +30,14 @@ export interface BuildPlan {
   steps: PlanStep[];
   questions: string[];
 }
+
+export interface GeneratedFile {
+  path: string;
+  content: string;
+}
+
+export interface GeneratedProject {
+  name: string;
+  summary: string;
+  files: GeneratedFile[];
+}
