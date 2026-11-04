@@ -76,8 +76,8 @@ function previewProject(){
  const jsFile=generatedFiles.find(f=>f.path==='app.js');
  if(!htmlFile||!cssFile||!jsFile){status.textContent='Project preview needs index.html, styles.css, and app.js.';return;}
  let html=htmlFile.content;
- html=html.replace(/<link\\b[^>]*href=[\"'][^\"']*styles\\.css[^\"']*[\"'][^>]*>/gi,'');
- html=html.replace(/<script\\b[^>]*src=[\"'][^\"']*app\\.js[^\"']*[\"'][^>]*>\\s*<\\/script>/gi,'');
+ html=html.replace(/<link\b[^>]*href=["'][^"']*styles\.css[^"']*["'][^>]*>/gi,'');
+ html=html.replace(/<script\b[^>]*src=["'][^"']*app\.js[^"']*["'][^>]*>\s*<\/script>/gi,'');
  const css='<style>'+cssFile.content.replace(/<\/style/gi,'<\\/style')+'</style>';
  const closingTag=String.fromCharCode(60)+'/script>';
  const script='<script>'+jsFile.content.replace(/<\/script/gi,'<\\/script')+closingTag;
