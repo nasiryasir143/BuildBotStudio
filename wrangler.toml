@@ -8,5 +8,10 @@ binding = "AI"
 [vars]
 AI_MODEL = "@cf/meta/llama-3.1-8b-instruct"
 
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = ["/api/*"]
+
 # This is a NEW, separate Worker configuration.
 # It does not modify or deploy the existing 100days Worker.
