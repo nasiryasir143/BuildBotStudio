@@ -1,4 +1,4 @@
-name = "buildbot-studio-api"
+name = "botstudio-api"
 main = "src/worker/index.ts"
 compatibility_date = "2026-10-01"
 
