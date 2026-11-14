@@ -4,22 +4,24 @@
 
 Build a mobile-friendly agent that accepts one natural-language instruction, plans the work, uses approved tools, reports progress, and returns verifiable results. ChatGPT integration is a later interface; the agent core must remain provider- and interface-neutral.
 
-## Current milestone: safe task planning
+## Current milestone: safe planning and capability registry
 
-- A new `POST /api/agent/plan` endpoint accepts one instruction.
-- The existing model provider creates a structured plan.
+- `POST /api/agent/plan` accepts one instruction and returns a structured plan.
+- `GET /api/agent/capabilities` returns the explicit tool allowlist.
+- Task planning is the only available capability; GitHub read, web research, and workspace file reading are listed as not connected.
+- Repository writes and Cloudflare deployment are disabled and marked approval-required.
 - The response explicitly says `planned`, not `completed`.
 - No arbitrary shell, browser, GitHub, Cloudflare, email, or payment actions are executed.
 
 ## Next milestones
 
-1. Tool registry with strict schemas and least-privilege permissions.
-2. Approval gate for external side effects (deployments, deletes, messages, purchases, account changes).
-3. Execution engine with bounded steps, timeouts, retries, and an audit log.
-4. Read-only tools first: repository inspection, documentation search, and public web research.
-5. Controlled write tools: create/update files on a dedicated branch and open a pull request; never push directly to a protected production branch by default.
-6. Browser automation in an isolated session with explicit domain allowlists.
-7. ChatGPT connection through a documented API/MCP-compatible adapter after the core is stable.
+1. Implement and test public, read-only repository inspection with strict GitHub URL validation.
+2. Add read-only public web research with domain and response-size limits.
+3. Add an execution state machine with bounded steps, timeouts, retries, and an audit log.
+4. Add approval gates for external side effects (deployments, deletes, messages, purchases, account changes).
+5. Add controlled write tools on a dedicated branch and open a pull request; never push directly to a protected production branch by default.
+6. Add browser automation in an isolated session with explicit domain allowlists.
+7. Connect ChatGPT through a documented API/MCP-compatible adapter after the core is stable.
 
 ## Free-use reality
 

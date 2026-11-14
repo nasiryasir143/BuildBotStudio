@@ -1,10 +1,12 @@
 import type { BuildPlan, Env } from "../types";
 import { createBuildPlan } from "./planner";
+import { getAgentCapabilities } from "./tool-registry";
 
 export interface AgentTaskResult {
   status: "planned";
   instruction: string;
   plan: BuildPlan;
+  capabilities: ReturnType<typeof getAgentCapabilities>;
   safety: {
     execution_enabled: false;
     reason: string;
@@ -13,10 +15,8 @@ export interface AgentTaskResult {
 }
 
 /**
- * First safe milestone for the universal agent.
- * It turns one natural-language instruction into a bounded plan.
- * It deliberately does not execute arbitrary code, browse authenticated
- * accounts, publish projects, spend money, or modify external services.
+ * Safe planning milestone. The instruction is converted into a plan only.
+ * No arbitrary code, external account, or write action is executed.
  */
 export async function prepareAgentTask(
   env: Env,
@@ -27,9 +27,10 @@ export async function prepareAgentTask(
     status: "planned",
     instruction,
     plan,
+    capabilities: getAgentCapabilities(),
     safety: {
       execution_enabled: false,
-      reason: "This release can plan tasks only. Tool adapters and approval gates must be connected before execution is enabled.",
+      reason: "This release plans tasks only. Read-only adapters must be connected and tested before execution; write actions remain disabled.",
       approval_required_for: [
         "publishing or deploying",
         "changing or deleting user data",

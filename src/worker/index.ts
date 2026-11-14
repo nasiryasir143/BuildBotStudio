@@ -1,6 +1,7 @@
 import type { Env } from "./types";
 import { createBuildPlan, generateStarterProject, reviseStarterProject } from "./agent/planner";
 import { prepareAgentTask } from "./agent/task-runner";
+import { getAgentCapabilities } from "./agent/tool-registry";
 
 const jsonHeaders = {
   "content-type": "application/json; charset=utf-8",
@@ -112,13 +113,17 @@ export default {
       return withSecurityHeaders(response);
     }
 
-    if (request.method === "POST" && ["/api/edit", "/api/plan", "/api/generate", "/api/agent/plan"].includes(url.pathname)) {
+    if ((request.method === "POST" && ["/api/edit", "/api/plan", "/api/generate", "/api/agent/plan"].includes(url.pathname)) || (request.method === "GET" && url.pathname === "/api/agent/capabilities")) {
       if (!env.APP_ACCESS_KEY) {
         return withSecurityHeaders(json({ error: "Workspace is locked until the owner configures the APP_ACCESS_KEY secret in Worker settings." }, 503));
       }
       if (!(await hasValidAccessKey(request, env))) {
         return withSecurityHeaders(json({ error: "Access key required or incorrect." }, 401));
       }
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/agent/capabilities") {
+      return withSecurityHeaders(json({ ok: true, capabilities: getAgentCapabilities() }));
     }
 
     if (request.method === "POST" && url.pathname === "/api/edit") {
