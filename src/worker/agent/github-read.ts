@@ -110,7 +110,7 @@ export async function readPublicRepositoryFile(
   const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
   let content: string;
   try {
-    content = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    content = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
   } catch {
     throw new Error("GITHUB_FILE_NOT_UTF8");
   }
