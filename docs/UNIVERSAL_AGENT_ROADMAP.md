@@ -9,11 +9,12 @@ A mobile-friendly agent that accepts one natural-language instruction, plans wor
 - `POST /api/agent/plan`: creates a structured plan using the configured AI provider.
 - `GET /api/agent/capabilities`: returns the explicit tool allowlist and availability.
 - `POST /api/agent/tool`: explicitly executes one registered read-only tool.
+- `POST /api/agent/run`: executes a caller-supplied sequence of 1–3 registered read-only steps in order; it does not autonomously choose tools from the AI plan.
 - `GET /api/agent/github/tree`: lists up to 150 entries from a public GitHub repository tree.
 - `GET /api/agent/github/file`: reads one public UTF-8 text file, limited to approximately 256 KB.
 - All agent endpoints require the workspace access key.
 - Public GitHub inputs are validated and upstream/file sizes are capped.
-- Private repositories, web search, workspace file access, GitHub writes, deployment, and autonomous multi-step plan execution are not enabled.
+- Private repositories, web search, workspace file access, GitHub writes, deployment, and autonomous tool selection from an AI plan are not enabled.
 
 ## Explicit tool execution
 
@@ -41,10 +42,22 @@ x-app-access-key: YOUR_WORKSPACE_KEY
 
 The tool endpoint accepts only the registered tool ID and the two declared operations. It does not accept arbitrary URLs, shell commands, private credentials, or write operations. GitHub's unauthenticated API rate limits apply.
 
+Run up to three read-only steps sequentially:
+
+```http
+POST /api/agent/run
+Content-Type: application/json
+x-app-access-key: YOUR_WORKSPACE_KEY
+
+{"steps":[{"tool":"github.repository.read","operation":"tree","owner":"octocat","repo":"Hello-World","ref":"master"},{"tool":"github.repository.read","operation":"file","owner":"octocat","repo":"Hello-World","ref":"master","path":"README.md"}]}
+```
+
+The batch is limited to three steps. Each step must independently pass the same allowlist and input validation as the single-tool endpoint. This is bounded batch execution, not autonomous planning or unrestricted agent behavior.
+
 ## Remaining milestones
 
 1. Connect a public web-search provider with source references and response limits.
-2. Add a bounded multi-step execution state machine, timeouts, retries, and an audit log.
+2. Add timeouts, retries, persistent task state, and a redacted audit log for tool execution.
 3. Let the planner select registered tools through strict schemas; untrusted tool output must never become instructions.
 4. Add human approval for externally visible or irreversible actions.
 5. Add controlled GitHub writes on dedicated branches and pull requests.
