@@ -27,6 +27,9 @@ if (!worker.includes("/api/agent/capabilities") || !worker.includes("getAgentCap
 for (const route of ["/api/agent/github/tree", "/api/agent/github/file"]) {
   if (!worker.includes(route)) throw new Error(\`Missing protected GitHub read endpoint: \${route}\`);
 }
+if (!worker.includes('"/api/agent/github/tree", "/api/agent/github/file"')) {
+  throw new Error("GitHub read endpoints are not protected by the workspace access key.");
+}
 if (!registry.includes('executionEnabled: false') || !registry.includes('status: "disabled"')) {
   throw new Error("Agent write capabilities must remain disabled.");
 }

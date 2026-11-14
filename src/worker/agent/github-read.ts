@@ -1,9 +1,3 @@
-export interface GitHubRepositoryInput {
-  owner: string;
-  repo: string;
-  ref: string;
-}
-
 export interface GitHubTreeEntry {
   path: string;
   type: "blob" | "tree";
@@ -27,9 +21,9 @@ function validRef(value: string): boolean {
 }
 
 function validFilePath(value: string): boolean {
-  if (!value || value.length > 240 || value.includes("\\\\") || /[\\u0000-\\u001f]/.test(value)) return false;
-  const parts = value.split("/");
-  return parts.every(part => part.length > 0 && part !== "." && part !== "..");
+  if (!value || value.length > 240 || value.includes(String.fromCharCode(92))) return false;
+  if ([...value].some(character => character.charCodeAt(0) < 32)) return false;
+  return value.split("/").every(part => part.length > 0 && part !== "." && part !== "..");
 }
 
 async function githubGet(url: string): Promise<unknown> {
@@ -54,7 +48,7 @@ async function githubGet(url: string): Promise<unknown> {
 }
 
 function repositoryUrl(owner: string, repo: string): string {
-  return `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
+  return \`https://api.github.com/repos/\${encodeURIComponent(owner)}/\${encodeURIComponent(repo)}\`;
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -67,7 +61,7 @@ export async function readPublicRepositoryTree(
   ref: string
 ): Promise<{ owner: string; repo: string; ref: string; entries: GitHubTreeEntry[]; truncated: boolean }> {
   if (!validOwner(owner) || !validRepo(repo) || !validRef(ref)) throw new Error("GITHUB_INVALID_INPUT");
-  const result = asRecord(await githubGet(`${repositoryUrl(owner, repo)}/git/trees/${encodeURIComponent(ref)}?recursive=1`));
+  const result = asRecord(await githubGet(\`\${repositoryUrl(owner, repo)}/git/trees/\${encodeURIComponent(ref)}?recursive=1\`));
   if (!Array.isArray(result.tree)) throw new Error("GITHUB_INVALID_RESPONSE");
   const all = result.tree.flatMap((entry): GitHubTreeEntry[] => {
     const item = asRecord(entry);
@@ -100,12 +94,12 @@ export async function readPublicRepositoryFile(
   }
   const encodedPath = path.split("/").map(segment => encodeURIComponent(segment)).join("/");
   const result = asRecord(await githubGet(
-    `${repositoryUrl(owner, repo)}/contents/${encodedPath}?ref=${encodeURIComponent(ref)}`
+    \`\${repositoryUrl(owner, repo)}/contents/\${encodedPath}?ref=\${encodeURIComponent(ref)}\`
   ));
   if (result.type !== "file" || typeof result.content !== "string" || result.encoding !== "base64") {
     throw new Error("GITHUB_NOT_A_FILE");
   }
-  const base64 = result.content.replace(/\\s/g, "");
+  const base64 = result.content.replace(/\s/g, "");
   if (base64.length > 350_000) throw new Error("GITHUB_FILE_TOO_LARGE");
   let binary: string;
   try {
