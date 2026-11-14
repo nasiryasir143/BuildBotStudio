@@ -50,6 +50,25 @@ export async function runAgentTool(input: unknown): Promise<{
   }
 }
 
+/** Run a small, sequential batch of explicitly declared read-only steps. */
+export async function runAgentSteps(input: unknown): Promise<{
+  status: "completed";
+  completed: number;
+  steps: Array<{ index: number; status: "completed"; tool: "github.repository.read"; operation: "tree" | "file"; result: unknown }>;
+}> {
+  if (typeof input !== "object" || input === null) throw new Error("AGENT_INVALID_TOOL_INPUT");
+  const record = input as Record<string, unknown>;
+  if (!Array.isArray(record.steps) || record.steps.length < 1 || record.steps.length > 3) {
+    throw new Error("AGENT_INVALID_TOOL_INPUT");
+  }
+  const steps: Array<{ index: number; status: "completed"; tool: "github.repository.read"; operation: "tree" | "file"; result: unknown }> = [];
+  for (let index = 0; index < record.steps.length; index++) {
+    const result = await runAgentTool(record.steps[index]);
+    steps.push({ index, ...result });
+  }
+  return { status: "completed", completed: steps.length, steps };
+}
+
 export function agentToolError(error: unknown): { status: number; message: string } {
   const code = error instanceof Error ? error.message : "";
   if (code === "AGENT_INVALID_TOOL_INPUT") return { status: 400, message: "Tool input is missing or invalid." };
