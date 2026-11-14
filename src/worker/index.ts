@@ -1,5 +1,6 @@
 import type { Env } from "./types";
 import { createBuildPlan, generateStarterProject, reviseStarterProject } from "./agent/planner";
+import { prepareAgentTask } from "./agent/task-runner";
 
 const jsonHeaders = {
   "content-type": "application/json; charset=utf-8",
@@ -111,7 +112,7 @@ export default {
       return withSecurityHeaders(response);
     }
 
-    if (request.method === "POST" && ["/api/edit", "/api/plan", "/api/generate"].includes(url.pathname)) {
+    if (request.method === "POST" && ["/api/edit", "/api/plan", "/api/generate", "/api/agent/plan"].includes(url.pathname)) {
       if (!env.APP_ACCESS_KEY) {
         return withSecurityHeaders(json({ error: "Workspace is locked until the owner configures the APP_ACCESS_KEY secret in Worker settings." }, 503));
       }
@@ -155,10 +156,14 @@ export default {
       }
     }
 
-    if (request.method === "POST" && (url.pathname === "/api/plan" || url.pathname === "/api/generate")) {
+    if (request.method === "POST" && (url.pathname === "/api/plan" || url.pathname === "/api/generate" || url.pathname === "/api/agent/plan")) {
       const instruction = await readInstruction(request);
       if (instruction instanceof Response) return withSecurityHeaders(instruction);
       try {
+        if (url.pathname === "/api/agent/plan") {
+          const task = await prepareAgentTask(env, instruction);
+          return withSecurityHeaders(json({ ok: true, task }));
+        }
         if (url.pathname === "/api/plan") {
           const plan = await createBuildPlan(env, instruction);
           return withSecurityHeaders(json({ ok: true, plan }));
