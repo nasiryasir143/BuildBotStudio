@@ -4,7 +4,7 @@ import { Script } from "node:vm";
 const html = readFileSync("public/index.html", "utf8");
 const inlineScripts = [...html.matchAll(/<script\b(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)];
 if (inlineScripts.length !== 1) {
-  throw new Error(\`Expected one inline workspace script, found \${inlineScripts.length}.\`);
+  throw new Error("Expected one inline workspace script, found " + inlineScripts.length + ".");
 }
 new Script(inlineScripts[0][1], { filename: "public/index.html:inline-script" });
 new Script(readFileSync("public/access.js", "utf8"), { filename: "public/access.js" });
@@ -25,12 +25,12 @@ if (!worker.includes("/api/agent/capabilities") || !worker.includes("getAgentCap
   throw new Error("Agent capabilities endpoint is not wired.");
 }
 for (const route of ["/api/agent/github/tree", "/api/agent/github/file"]) {
-  if (!worker.includes(route)) throw new Error(\`Missing protected GitHub read endpoint: \${route}\`);
+  if (!worker.includes(route)) throw new Error("Missing protected GitHub read endpoint: " + route);
 }
 if (!worker.includes('"/api/agent/github/tree", "/api/agent/github/file"')) {
   throw new Error("GitHub read endpoints are not protected by the workspace access key.");
 }
-if (!registry.includes('executionEnabled: false') || !registry.includes('status: "disabled"')) {
+if (!registry.includes("executionEnabled: false") || !registry.includes('status: "disabled"')) {
   throw new Error("Agent write capabilities must remain disabled.");
 }
 if (!registry.includes('id: "github.repository.read"') || !registry.includes('status: "available"')) {
@@ -40,7 +40,7 @@ if (!runner.includes("execution_enabled: false") || !runner.includes("getAgentCa
   throw new Error("Agent task runner must remain bounded and report capabilities.");
 }
 for (const safetyRule of ["validOwner", "validRepo", "validRef", "validFilePath", "GITHUB_FILE_TOO_LARGE", "TextDecoder"]) {
-  if (!github.includes(safetyRule)) throw new Error(\`Missing GitHub adapter safety rule: \${safetyRule}\`);
+  if (!github.includes(safetyRule)) throw new Error("Missing GitHub adapter safety rule: " + safetyRule);
 }
 if (github.includes("Authorization:")) {
   throw new Error("Public read-only adapter must not contain a hard-coded credential.");
