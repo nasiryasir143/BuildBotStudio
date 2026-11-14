@@ -8,6 +8,14 @@ binding = "AI"
 [vars]
 AI_MODEL = "@cf/qwen/qwen2.5-coder-32b-instruct"
 
+# Worker Previews are isolated from production. Keep preview configuration
+# explicit so Wrangler can create branch previews without touching production.
+[previews.vars]
+AI_MODEL = "@cf/qwen/qwen2.5-coder-32b-instruct"
+
+[previews.ai]
+binding = "AI"
+
 [assets]
 directory = "./public"
 binding = "ASSETS"

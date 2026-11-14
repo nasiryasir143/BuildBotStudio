@@ -1,19 +1,19 @@
 # Deployment checklist — separate service only
 
-This repository is configured for a new Cloudflare Worker named `buildbot-studio-api`. It is separate from the existing `100days` Worker.
+This repository is configured for a new Cloudflare Worker named `botstudio-api`. It is separate from the existing `100days` Worker.
 
 ## Before pressing Deploy
 
 1. Open the Cloudflare account and choose the intended account.
 2. Create or connect a NEW Worker for this repository. Do not select or overwrite `100days`.
-3. Confirm the deployment configuration reads this repository's `wrangler.toml` and the Worker name is exactly `buildbot-studio-api`.
+3. Confirm the deployment configuration reads this repository's `wrangler.toml` and the Worker name is exactly `botstudio-api`.
 4. Confirm the Workers AI binding named `AI` is enabled for this new Worker. The binding in the existing `100days` Worker is not shared automatically.
 5. In this new Worker, open **Settings → Variables and Secrets** and add a secret named exactly `APP_ACCESS_KEY`. Use a long, unique password-like value and keep it private. Do not put it in `wrangler.toml`, GitHub, or chat.
 6. Save the secret before testing generation. The API intentionally refuses AI requests until this secret exists.
 
 ## Deploy
 
-After the above checks, press Deploy in the Cloudflare deployment screen. If Cloudflare shows a Worker name other than `buildbot-studio-api`, stop and correct it before deploying.
+After the above checks, press Deploy in the Cloudflare deployment screen. If Cloudflare shows a Worker name other than `botstudio-api`, stop and correct it before deploying.
 
 If using a local development environment instead:
 
