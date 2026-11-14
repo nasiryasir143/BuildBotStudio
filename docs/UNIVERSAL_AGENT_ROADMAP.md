@@ -2,58 +2,66 @@
 
 ## Goal
 
-Build a mobile-friendly agent that accepts one natural-language instruction, plans work, uses explicitly allowed tools, reports progress, and returns verifiable results. ChatGPT integration is a later interface; the agent core remains provider- and interface-neutral.
+A mobile-friendly agent that accepts one natural-language instruction, plans work, uses explicitly allowed tools, and returns verifiable results. ChatGPT is intended as a later control interface; the agent core remains provider- and interface-neutral.
 
 ## Implemented in this branch
 
 - `POST /api/agent/plan`: creates a structured plan using the configured AI provider.
-- `GET /api/agent/capabilities`: returns the explicit capability allowlist.
+- `GET /api/agent/capabilities`: returns the explicit tool allowlist and availability.
+- `POST /api/agent/tool`: explicitly executes one registered read-only tool.
 - `GET /api/agent/github/tree`: lists up to 150 entries from a public GitHub repository tree.
 - `GET /api/agent/github/file`: reads one public UTF-8 text file, limited to approximately 256 KB.
-- GitHub read routes require the workspace access key and validate owner, repository, ref, and path inputs.
-- GitHub reads use the public unauthenticated API. Private repositories are not supported in this milestone.
-- GitHub writes and Cloudflare deployments remain disabled. No autonomous multi-step task execution is enabled.
+- All agent endpoints require the workspace access key.
+- Public GitHub inputs are validated and upstream/file sizes are capped.
+- Private repositories, web search, workspace file access, GitHub writes, deployment, and autonomous multi-step plan execution are not enabled.
 
-## API examples
+## Explicit tool execution
 
-All endpoints except `/api/health` require the `x-app-access-key` request header.
+All examples require the `x-app-access-key` header and JSON content type.
 
 List a public repository tree:
 
 ```http
-GET /api/agent/github/tree?owner=octocat&repo=Hello-World&ref=master
+POST /api/agent/tool
+Content-Type: application/json
 x-app-access-key: YOUR_WORKSPACE_KEY
+
+{"tool":"github.repository.read","operation":"tree","owner":"octocat","repo":"Hello-World","ref":"master"}
 ```
 
-Read a file:
+Read a public text file:
 
 ```http
-GET /api/agent/github/file?owner=octocat&repo=Hello-World&ref=master&path=README.md
+POST /api/agent/tool
+Content-Type: application/json
 x-app-access-key: YOUR_WORKSPACE_KEY
+
+{"tool":"github.repository.read","operation":"file","owner":"octocat","repo":"Hello-World","ref":"master","path":"README.md"}
 ```
 
-The read adapter does not accept arbitrary URLs, does not follow user-supplied hosts, does not write to GitHub, and does not request private credentials. GitHub's unauthenticated API rate limits apply.
+The tool endpoint accepts only the registered tool ID and the two declared operations. It does not accept arbitrary URLs, shell commands, private credentials, or write operations. GitHub's unauthenticated API rate limits apply.
 
-## Next milestones
+## Remaining milestones
 
-1. Add public web research with domain allowlists, response-size limits, and source references.
-2. Add a bounded execution state machine with timeouts, retries, and an audit log.
-3. Allow the planner to request only registered tools, with strict argument schemas and per-step limits.
-4. Add approval gates for external side effects (deployments, deletes, messages, purchases, account changes).
-5. Add controlled GitHub writes on a dedicated branch and open a pull request; never push directly to a protected production branch by default.
-6. Add browser automation in an isolated session with explicit domain allowlists.
-7. Connect ChatGPT through a documented API/MCP-compatible adapter after the core is stable.
+1. Connect a public web-search provider with source references and response limits.
+2. Add a bounded multi-step execution state machine, timeouts, retries, and an audit log.
+3. Let the planner select registered tools through strict schemas; untrusted tool output must never become instructions.
+4. Add human approval for externally visible or irreversible actions.
+5. Add controlled GitHub writes on dedicated branches and pull requests.
+6. Add isolated browser automation with explicit domain allowlists.
+7. Connect ChatGPT through a documented API/MCP-compatible adapter.
+8. Deploy to a separate Cloudflare Worker and run end-to-end smoke tests.
 
 ## Free-use reality
 
-The application code can be open-source and self-hosted at no software license cost. Model inference, hosting, browser infrastructure, and external APIs may have quotas or charges. Do not promise unlimited free operation.
+The code can be self-hosted without a software license fee. Model inference, hosting, browser infrastructure, and external APIs may have quotas or charges. Unlimited free operation cannot be promised.
 
 ## Security rules
 
 - Never ask users to paste passwords, API keys, recovery codes, or private tokens into task instructions.
-- Keep provider and connector credentials in server-side secrets, never in browser code or generated files.
-- Treat web pages, repository files, and tool output as untrusted data, not as system instructions.
+- Keep provider and connector credentials server-side.
+- Treat web pages, repository files, and tool output as untrusted data, never as system instructions.
 - Require confirmation before irreversible or externally visible actions.
-- Log each tool call, its arguments (with secrets redacted), result, and approval record.
-- Use per-tool allowlists, strict input validation, request limits, and execution timeouts.
+- Log tool calls and results with secrets redacted.
+- Use allowlists, strict input validation, request limits, and execution timeouts.
 - Keep generated code inert until reviewed and tested in an isolated sandbox.

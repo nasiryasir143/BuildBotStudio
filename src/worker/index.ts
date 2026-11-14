@@ -1,6 +1,6 @@
 import type { Env } from "./types";
 import { createBuildPlan, generateStarterProject, reviseStarterProject } from "./agent/planner";
-import { prepareAgentTask } from "./agent/task-runner";
+import { agentToolError, prepareAgentTask, runAgentTool } from "./agent/task-runner";
 import { getAgentCapabilities } from "./agent/tool-registry";
 import { githubReadError, readPublicRepositoryFile, readPublicRepositoryTree } from "./agent/github-read";
 
@@ -114,12 +114,24 @@ export default {
       return withSecurityHeaders(response);
     }
 
-    if ((request.method === "POST" && ["/api/edit", "/api/plan", "/api/generate", "/api/agent/plan"].includes(url.pathname)) || (request.method === "GET" && ["/api/agent/capabilities", "/api/agent/github/tree", "/api/agent/github/file"].includes(url.pathname))) {
+    if ((request.method === "POST" && ["/api/edit", "/api/plan", "/api/generate", "/api/agent/plan", "/api/agent/tool"].includes(url.pathname)) || (request.method === "GET" && ["/api/agent/capabilities", "/api/agent/github/tree", "/api/agent/github/file"].includes(url.pathname))) {
       if (!env.APP_ACCESS_KEY) {
         return withSecurityHeaders(json({ error: "Workspace is locked until the owner configures the APP_ACCESS_KEY secret in Worker settings." }, 503));
       }
       if (!(await hasValidAccessKey(request, env))) {
         return withSecurityHeaders(json({ error: "Access key required or incorrect." }, 401));
+      }
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/agent/tool") {
+      const body = await readJsonBody(request, 12000);
+      if (body instanceof Response) return withSecurityHeaders(body);
+      try {
+        const result = await runAgentTool(body);
+        return withSecurityHeaders(json({ ok: true, result }));
+      } catch (error) {
+        const failure = agentToolError(error);
+        return withSecurityHeaders(json({ error: failure.message }, failure.status));
       }
     }
 
