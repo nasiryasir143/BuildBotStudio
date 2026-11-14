@@ -48,7 +48,7 @@ async function githubGet(url: string): Promise<unknown> {
 }
 
 function repositoryUrl(owner: string, repo: string): string {
-  return \`https://api.github.com/repos/\${encodeURIComponent(owner)}/\${encodeURIComponent(repo)}\`;
+  return "https://api.github.com/repos/" + encodeURIComponent(owner) + "/" + encodeURIComponent(repo);
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -61,7 +61,8 @@ export async function readPublicRepositoryTree(
   ref: string
 ): Promise<{ owner: string; repo: string; ref: string; entries: GitHubTreeEntry[]; truncated: boolean }> {
   if (!validOwner(owner) || !validRepo(repo) || !validRef(ref)) throw new Error("GITHUB_INVALID_INPUT");
-  const result = asRecord(await githubGet(\`\${repositoryUrl(owner, repo)}/git/trees/\${encodeURIComponent(ref)}?recursive=1\`));
+  const url = repositoryUrl(owner, repo) + "/git/trees/" + encodeURIComponent(ref) + "?recursive=1";
+  const result = asRecord(await githubGet(url));
   if (!Array.isArray(result.tree)) throw new Error("GITHUB_INVALID_RESPONSE");
   const all = result.tree.flatMap((entry): GitHubTreeEntry[] => {
     const item = asRecord(entry);
@@ -93,9 +94,8 @@ export async function readPublicRepositoryFile(
     throw new Error("GITHUB_INVALID_INPUT");
   }
   const encodedPath = path.split("/").map(segment => encodeURIComponent(segment)).join("/");
-  const result = asRecord(await githubGet(
-    \`\${repositoryUrl(owner, repo)}/contents/\${encodedPath}?ref=\${encodeURIComponent(ref)}\`
-  ));
+  const url = repositoryUrl(owner, repo) + "/contents/" + encodedPath + "?ref=" + encodeURIComponent(ref);
+  const result = asRecord(await githubGet(url));
   if (result.type !== "file" || typeof result.content !== "string" || result.encoding !== "base64") {
     throw new Error("GITHUB_NOT_A_FILE");
   }
