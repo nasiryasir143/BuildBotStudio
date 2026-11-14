@@ -2,6 +2,7 @@ import type { Env } from "./types";
 import { createBuildPlan, generateStarterProject, reviseStarterProject } from "./agent/planner";
 import { prepareAgentTask } from "./agent/task-runner";
 import { getAgentCapabilities } from "./agent/tool-registry";
+import { githubReadError, readPublicRepositoryFile, readPublicRepositoryTree } from "./agent/github-read";
 
 const jsonHeaders = {
   "content-type": "application/json; charset=utf-8",
@@ -113,12 +114,41 @@ export default {
       return withSecurityHeaders(response);
     }
 
-    if ((request.method === "POST" && ["/api/edit", "/api/plan", "/api/generate", "/api/agent/plan"].includes(url.pathname)) || (request.method === "GET" && url.pathname === "/api/agent/capabilities")) {
+    if ((request.method === "POST" && ["/api/edit", "/api/plan", "/api/generate", "/api/agent/plan"].includes(url.pathname)) || (request.method === "GET" && ["/api/agent/capabilities", "/api/agent/github/tree", "/api/agent/github/file"].includes(url.pathname))) {
       if (!env.APP_ACCESS_KEY) {
         return withSecurityHeaders(json({ error: "Workspace is locked until the owner configures the APP_ACCESS_KEY secret in Worker settings." }, 503));
       }
       if (!(await hasValidAccessKey(request, env))) {
         return withSecurityHeaders(json({ error: "Access key required or incorrect." }, 401));
+      }
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/agent/github/tree") {
+      try {
+        const tree = await readPublicRepositoryTree(
+          url.searchParams.get("owner") ?? "",
+          url.searchParams.get("repo") ?? "",
+          url.searchParams.get("ref") ?? ""
+        );
+        return withSecurityHeaders(json({ ok: true, tree }));
+      } catch (error) {
+        const failure = githubReadError(error);
+        return withSecurityHeaders(json({ error: failure.message }, failure.status));
+      }
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/agent/github/file") {
+      try {
+        const file = await readPublicRepositoryFile(
+          url.searchParams.get("owner") ?? "",
+          url.searchParams.get("repo") ?? "",
+          url.searchParams.get("ref") ?? "",
+          url.searchParams.get("path") ?? ""
+        );
+        return withSecurityHeaders(json({ ok: true, file }));
+      } catch (error) {
+        const failure = githubReadError(error);
+        return withSecurityHeaders(json({ error: failure.message }, failure.status));
       }
     }
 

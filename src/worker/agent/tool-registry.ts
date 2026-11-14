@@ -11,8 +11,8 @@ export interface AgentToolDefinition {
 }
 
 /**
- * Explicit allowlist for the agent. A listed integration is not executable
- * until its adapter is implemented and marked available.
+ * Explicit allowlist. "Available" means a bounded API exists, not that the
+ * model may freely execute arbitrary code or access private accounts.
  */
 const AGENT_TOOLS: AgentToolDefinition[] = [
   {
@@ -25,10 +25,10 @@ const AGENT_TOOLS: AgentToolDefinition[] = [
   },
   {
     id: "github.repository.read",
-    title: "Read GitHub repository",
-    description: "Inspect repository files and project structure without changing them.",
+    title: "Read public GitHub repository",
+    description: "List a public repository tree or read a UTF-8 text file through protected read-only endpoints.",
     access: "read_only",
-    status: "not_connected",
+    status: "available",
     requiresApproval: false
   },
   {
@@ -68,7 +68,7 @@ const AGENT_TOOLS: AgentToolDefinition[] = [
 export function getAgentCapabilities() {
   return {
     executionEnabled: false,
-    mode: "planning_only" as const,
+    mode: "planning_and_read_only" as const,
     tools: AGENT_TOOLS.map(tool => ({ ...tool }))
   };
 }

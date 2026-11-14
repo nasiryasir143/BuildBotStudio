@@ -15,8 +15,9 @@ export interface AgentTaskResult {
 }
 
 /**
- * Safe planning milestone. The instruction is converted into a plan only.
- * No arbitrary code, external account, or write action is executed.
+ * Creates a plan and reports available bounded tools. Tool calls are exposed
+ * through separate protected endpoints; this function does not autonomously
+ * execute a multi-step plan or perform write actions.
  */
 export async function prepareAgentTask(
   env: Env,
@@ -30,7 +31,7 @@ export async function prepareAgentTask(
     capabilities: getAgentCapabilities(),
     safety: {
       execution_enabled: false,
-      reason: "This release plans tasks only. Read-only adapters must be connected and tested before execution; write actions remain disabled.",
+      reason: "This release supports planning and separate read-only public GitHub inspection. Autonomous multi-step execution and all write actions remain disabled.",
       approval_required_for: [
         "publishing or deploying",
         "changing or deleting user data",
