@@ -1,0 +1,9 @@
+name = "ai-ceo-studio-api"
+main = "worker.js"
+compatibility_date = "2026-11-24"
+
+[ai]
+binding = "AI"
+
+[vars]
+AI_MODEL = "@cf/meta/llama-3.1-8b-instruct"
