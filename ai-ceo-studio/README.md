@@ -9,20 +9,30 @@ A mobile-first multi-agent experiment. The dashboard and API are served by one C
 4. Review Agent — checks the proposal for defects and risks.
 5. AI CEO — final summary.
 
-## Deploy from a phone
-1. In Cloudflare, open **Workers & Pages** and create a Worker named `ai-ceo-studio`.
-2. Connect this GitHub repository and choose branch `ai-ceo-studio`, with the project root directory set to `ai-ceo-studio`. If the dashboard offers a Workers Builds / Git integration flow, use the repository connection and deploy from this folder.
-3. Ensure the deployment uses the included `wrangler.toml`. The Worker needs the Workers AI binding named `AI`, as declared in that file.
-4. In the Worker settings, add a secret named `APP_TOKEN`. Generate a long random value and keep it private. Do not put the value in GitHub or in the source code.
-5. Deploy. Open the Worker URL. Paste the same secret into **Private access token** and press **Save token**.
-6. Enter a test task and press **Start team**.
+## Automatic deployment from GitHub
+The repository includes `.github/workflows/deploy-ai-ceo-studio.yml`. It deploys this subfolder to Cloudflare when code is pushed to branch `ai-ceo-studio`, or when manually started from GitHub Actions.
 
-If Cloudflare's Git integration does not allow selecting this subfolder as the Worker root, use the Cloudflare dashboard's supported upload/deploy flow for this folder, or create a separate repository containing this folder. Do not deploy the whole BuildBotStudio repository as this Worker.
+Before the first deployment, add these three **GitHub Actions repository secrets** under **Settings → Secrets and variables → Actions → New repository secret**:
+
+- `CLOUDFLARE_API_TOKEN` — a Cloudflare API token with permission to edit/deploy Workers.
+- `CLOUDFLARE_ACCOUNT_ID` — your Cloudflare account ID.
+- `APP_TOKEN` — a long random private access token used by the app itself.
+
+Keep all three values private. Do not paste them into chat, commit them to the repository, or put them in source code. The workflow securely passes `APP_TOKEN` to the Worker as a Worker secret.
+
+After adding the secrets:
+1. Open the repository's **Actions** tab.
+2. Select **Deploy AI CEO Studio**.
+3. Press **Run workflow** and select branch `ai-ceo-studio`.
+4. Wait for the run to finish successfully. The Cloudflare Worker URL will be shown in the deployment logs / Cloudflare dashboard.
+5. Open that Worker URL, enter the same `APP_TOKEN` in **Private access token**, and press **Save token**.
+
+Future changes pushed to `ai-ceo-studio` will deploy automatically.
 
 ## Configuration
 - Worker name: `ai-ceo-studio`
 - Workers AI binding: `AI`
-- Secret: `APP_TOKEN`
+- Secret: `APP_TOKEN` (injected by the GitHub Actions workflow)
 - Model variable: `AI_MODEL` (default is `@cf/meta/llama-3.1-8b-instruct`; change it to a model currently available in your Cloudflare account if needed)
 - API: same-origin `/api/run`
 - Health check: authenticated `/api/health`
