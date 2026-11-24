@@ -1,0 +1,32 @@
+name: Deploy AI CEO Studio
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - ai-ceo-studio
+    paths:
+      - "ai-ceo-studio/**"
+      - ".github/workflows/deploy-ai-ceo-studio.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Deploy Worker and bind private app token
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: "ai-ceo-studio"
+          secrets: |
+            APP_TOKEN
+        env:
+          APP_TOKEN: ${{ secrets.APP_TOKEN }}
