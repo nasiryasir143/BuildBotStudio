@@ -164,6 +164,14 @@ export default {
         1600
       );
 
+      if (webResults.length) {
+        const links = webResults.map((item, index) =>
+          (index + 1) + ". " + item.title + "\n" + item.url
+        ).join("\n");
+        const researchReport = reports.find(item => item.agent === "Research Agent");
+        if (researchReport) researchReport.output += "\n\nLive web sources:\n" + links;
+      }
+
       const coding = await run(
         "Coding Agent",
         "You are the implementation specialist. Your ONLY job is to produce the requested deliverable. Do not repeat research or the CEO plan. If code is requested, provide complete, runnable code, not fragments; include every required file with clear filenames. Do not claim to have run, tested, committed, or deployed anything. If output is too large, prioritize a complete working core rather than a partial oversized answer.",
