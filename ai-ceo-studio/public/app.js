@@ -75,7 +75,7 @@ runButton.addEventListener("click", async () => {
       markDone(report.agent);
       showReport(report.agent, report.output);
     }
-    statusLine.textContent = "Finished with " + data.model + ". Review all suggestions before using them.";
+    statusLine.textContent = "Finished with " + data.model + ". Web research: " + (data.liveResearch?.sourceCount ?? 0) + " sources. Review suggestions before using them.";
   } catch (error) {
     statusLine.textContent = "Could not finish: " + error.message;
     const empty = document.createElement("div");
