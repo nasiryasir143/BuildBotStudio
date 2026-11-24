@@ -33,7 +33,28 @@ function showReport(name, text) {
   const h = document.createElement("h4");
   h.textContent = name;
   const pre = document.createElement("pre");
-  pre.textContent = text || "";
+  const parts = String(text || "").split(/(https?:\\/\\/[^\\s]+)/g);
+  for (const part of parts) {
+    if (/^https?:\\/\\//i.test(part)) {
+      try {
+        const link = document.createElement("a");
+        const safeUrl = new URL(part);
+        if (safeUrl.protocol === "https:" || safeUrl.protocol === "http:") {
+          link.href = safeUrl.href;
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+          link.textContent = part;
+          pre.append(link);
+        } else {
+          pre.append(document.createTextNode(part));
+        }
+      } catch {
+        pre.append(document.createTextNode(part));
+      }
+    } else {
+      pre.append(document.createTextNode(part));
+    }
+  }
   article.append(h, pre);
   outputs.append(article);
 }
