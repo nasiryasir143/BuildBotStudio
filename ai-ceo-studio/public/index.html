@@ -8,16 +8,21 @@
 <body>
 <main class="wrap">
 <header><div class="logo">AI</div><div><small>PERSONAL AGENT WORKSPACE</small><h1>AI CEO Studio</h1></div><span class="pill">TEST BUILD</span></header>
-<section class="intro"><div><small>YOUR DIGITAL TEAM</small><h2>One task.<br><em>A team of agents.</em></h2><p>A mobile-first test bench: the CEO plans, agents analyze and draft, and a reviewer checks the result.</p></div><div class="ceo">CEO</div></section>
-<section class="panel"><label for="task">What should the team work on?</label><textarea id="task" rows="4" placeholder="Example: Review this JavaScript function, find likely bugs, and suggest a safer version..."></textarea><div class="actions"><small>Do not include passwords, API keys, or private data.</small><button id="run">Start team</button></div><p id="status" aria-live="polite">Ready for your first task.</p></section>
+<section class="intro"><div><small>YOUR DIGITAL TEAM</small><h2>One task.<br><em>A team of agents.</em></h2><p>A mobile-first workspace: the CEO plans, agents analyze and draft, and a reviewer checks the result.</p></div><div class="ceo">CEO</div></section>
+<section class="panel">
+<label for="access-token">Private access token</label>
+<div class="token-row"><input id="access-token" type="password" autocomplete="off" placeholder="Paste your Cloudflare APP_TOKEN"><button id="save-token" type="button">Save token</button></div>
+<p>The token is kept only in this browser tab. Never share it or put it in public code.</p>
+</section>
+<section class="panel"><label for="task">What should the team work on?</label><textarea id="task" rows="4" maxlength="4000" placeholder="Example: Review this JavaScript function, find likely bugs, and suggest a safer version..."></textarea><div class="actions"><small>Do not include passwords, API keys, or private data.</small><button id="run">Start team</button></div><p id="status" aria-live="polite">Ready for your first task.</p></section>
 <section class="panel"><div class="heading"><h3>Team members</h3><small>Runs in sequence</small></div><div class="agents">
 <div class="agent" data-agent="AI CEO"><b>01</b><span><strong>AI CEO</strong><small>Plans and assigns work</small></span><i>Ready</i></div>
-<div class="agent" data-agent="Research Agent"><b>02</b><span><strong>Research Agent</strong><small>Analyzes the task</small></span><i>Ready</i></div>
+<div class="agent" data-agent="Research Agent"><b>02</b><span><strong>Research Agent</strong><small>Analyzes the task (no live web access)</small></span><i>Ready</i></div>
 <div class="agent" data-agent="Coding Agent"><b>03</b><span><strong>Coding Agent</strong><small>Drafts code or steps</small></span><i>Ready</i></div>
 <div class="agent" data-agent="Review Agent"><b>04</b><span><strong>Review Agent</strong><small>Checks risks and mistakes</small></span><i>Ready</i></div>
 <div class="agent" data-agent="AI CEO — Final Report"><b>05</b><span><strong>CEO Report</strong><small>Summarizes team work</small></span><i>Ready</i></div>
 </div></section>
 <section class="panel"><div class="heading"><h3>Work reports</h3><small>Agent outputs</small></div><div id="outputs"><div class="empty">Reports will appear here.</div></div></section>
-<footer>AI CEO Studio · Editable starter · Review AI-generated code before use.</footer>
+<footer>AI CEO Studio · Test build · Review AI-generated code before use.</footer>
 </main><script src="app.js"></script>
 </body></html>
