@@ -33,18 +33,24 @@ function showReport(name, text) {
   const h = document.createElement("h4");
   h.textContent = name;
   const pre = document.createElement("pre");
-  const parts = String(text || "").split(/(https?:\\/\\/[^\\s]+)/g);
+  const parts = String(text || "").split(/(\s+)/);
   for (const part of parts) {
-    if (/^https?:\\/\\//i.test(part)) {
+    if (part.startsWith("https://") || part.startsWith("http://")) {
+      let urlText = part;
+      let punctuation = "";
+      while (/[),.;!?]/.test(urlText.slice(-1))) {
+        punctuation = urlText.slice(-1) + punctuation;
+        urlText = urlText.slice(0, -1);
+      }
       try {
-        const link = document.createElement("a");
-        const safeUrl = new URL(part);
+        const safeUrl = new URL(urlText);
         if (safeUrl.protocol === "https:" || safeUrl.protocol === "http:") {
+          const link = document.createElement("a");
           link.href = safeUrl.href;
           link.target = "_blank";
           link.rel = "noopener noreferrer";
-          link.textContent = part;
-          pre.append(link);
+          link.textContent = urlText;
+          pre.append(link, document.createTextNode(punctuation));
         } else {
           pre.append(document.createTextNode(part));
         }
