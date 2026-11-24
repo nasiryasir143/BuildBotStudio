@@ -13,9 +13,20 @@ async function ask(env, system, user) {
       { role: "system", content: system },
       { role: "user", content: user }
     ],
-    max_tokens: 700
+    max_tokens: 1200,
+    reasoning_effort: "low",
+    chat_template_kwargs: { enable_thinking: false }
   });
-  return result?.response || result?.output_text || result?.choices?.[0]?.message?.content || JSON.stringify(result);
+
+  const content =
+    result?.response ||
+    result?.output_text ||
+    result?.choices?.[0]?.message?.content;
+
+  if (typeof content !== "string" || !content.trim()) {
+    throw new Error("The AI model returned no user-facing answer. Please try again.");
+  }
+  return content.trim();
 }
 
 function authorized(request, env) {
