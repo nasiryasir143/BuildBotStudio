@@ -1,18 +1,21 @@
 const jsonHeaders = { "Content-Type": "application/json; charset=utf-8" };
 
+const DEFAULT_MODEL = "@cf/zai-org/glm-4.7-flash";
+
 const reply = (data, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: jsonHeaders });
 
 async function ask(env, system, user) {
   if (!env.AI) throw new Error("Workers AI binding AI is missing.");
-  const result = await env.AI.run(env.AI_MODEL || "@cf/meta/llama-3.1-8b-instruct", {
+  const model = env.AI_MODEL || DEFAULT_MODEL;
+  const result = await env.AI.run(model, {
     messages: [
       { role: "system", content: system },
       { role: "user", content: user }
     ],
     max_tokens: 700
   });
-  return result?.response || result?.output_text || JSON.stringify(result);
+  return result?.response || result?.output_text || result?.choices?.[0]?.message?.content || JSON.stringify(result);
 }
 
 function authorized(request, env) {
@@ -31,7 +34,7 @@ export default {
 
     if (url.pathname === "/api/health" && request.method === "GET") {
       if (!authorized(request, env)) return reply({ error: "Unauthorized. Add your access token." }, 401);
-      return reply({ ok: true, service: "AI CEO Studio API", model: env.AI_MODEL || "@cf/meta/llama-3.1-8b-instruct" });
+      return reply({ ok: true, service: "AI CEO Studio API", model: env.AI_MODEL || DEFAULT_MODEL });
     }
 
     if (url.pathname !== "/api/run") return reply({ error: "API route not found." }, 404);
@@ -56,7 +59,7 @@ export default {
       const coding = await run("Coding Agent", "Draft code or implementation steps when useful. Do not claim to run, test, commit, or deploy code. Explain important changes.", `Task:\n${task}\nPlan:\n${plan}\nResearch:\n${research}`);
       const review = await run("Review Agent", "Review the plan and proposed implementation for bugs, security issues, missing requirements, and unverified claims. Do not execute anything.", `Task:\n${task}\nPlan:\n${plan}\nResearch:\n${research}\nProposal:\n${coding}`);
       const final = await run("AI CEO — Final Report", "Summarize honestly. Separate proposed work from completed actions. Give one safe next step.", `Task:\n${task}\nPlan:\n${plan}\nResearch:\n${research}\nCoding proposal:\n${coding}\nReview:\n${review}`);
-      return reply({ ok: true, model: env.AI_MODEL || "@cf/meta/llama-3.1-8b-instruct", reports, final });
+      return reply({ ok: true, model: env.AI_MODEL || DEFAULT_MODEL, reports, final });
     } catch (error) {
       return reply({ error: error?.message || "Unexpected error. Check Worker logs and AI quota." }, 500);
     }
