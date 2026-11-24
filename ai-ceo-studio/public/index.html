@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#101827"><title>AI CEO Studio</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="wrap">
+<header><div class="logo">AI</div><div><small>PERSONAL AGENT WORKSPACE</small><h1>AI CEO Studio</h1></div><span class="pill">TEST BUILD</span></header>
+<section class="intro"><div><small>YOUR DIGITAL TEAM</small><h2>One task.<br><em>A team of agents.</em></h2><p>A mobile-first test bench: the CEO plans, agents analyze and draft, and a reviewer checks the result.</p></div><div class="ceo">CEO</div></section>
+<section class="panel"><label for="task">What should the team work on?</label><textarea id="task" rows="4" placeholder="Example: Review this JavaScript function, find likely bugs, and suggest a safer version..."></textarea><div class="actions"><small>Do not include passwords, API keys, or private data.</small><button id="run">Start team</button></div><p id="status" aria-live="polite">Ready for your first task.</p></section>
+<section class="panel"><div class="heading"><h3>Team members</h3><small>Runs in sequence</small></div><div class="agents">
+<div class="agent" data-agent="AI CEO"><b>01</b><span><strong>AI CEO</strong><small>Plans and assigns work</small></span><i>Ready</i></div>
+<div class="agent" data-agent="Research Agent"><b>02</b><span><strong>Research Agent</strong><small>Analyzes the task</small></span><i>Ready</i></div>
+<div class="agent" data-agent="Coding Agent"><b>03</b><span><strong>Coding Agent</strong><small>Drafts code or steps</small></span><i>Ready</i></div>
+<div class="agent" data-agent="Review Agent"><b>04</b><span><strong>Review Agent</strong><small>Checks risks and mistakes</small></span><i>Ready</i></div>
+<div class="agent" data-agent="AI CEO — Final Report"><b>05</b><span><strong>CEO Report</strong><small>Summarizes team work</small></span><i>Ready</i></div>
+</div></section>
+<section class="panel"><div class="heading"><h3>Work reports</h3><small>Agent outputs</small></div><div id="outputs"><div class="empty">Reports will appear here.</div></div></section>
+<footer>AI CEO Studio · Editable starter · Review AI-generated code before use.</footer>
+</main><script src="app.js"></script>
+</body></html>
