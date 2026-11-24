@@ -4,7 +4,7 @@ A mobile-first multi-agent experiment. The dashboard and API are served by one C
 
 ## Included agents
 1. AI CEO — plans the task and produces the final report.
-2. Research Agent — analyzes the request but does not have live web access.
+2. Research Agent — searches the public web for relevant pages and summarizes source links.
 3. Coding Agent — drafts code or implementation steps.
 4. Review Agent — checks the proposal for defects and risks.
 5. AI CEO — final summary.
@@ -33,15 +33,15 @@ Future changes pushed to `ai-ceo-studio` will deploy automatically.
 - Worker name: `ai-ceo-studio`
 - Workers AI binding: `AI`
 - Secret: `APP_TOKEN` (injected by the GitHub Actions workflow)
-- Model variable: `AI_MODEL` (default is `@cf/meta/llama-3.1-8b-instruct`; change it to a model currently available in your Cloudflare account if needed)
+- Model variable: `AI_MODEL` (default is `@cf/zai-org/glm-4.7-flash`).
 - API: same-origin `/api/run`
 - Health check: authenticated `/api/health`
 
 ## Important limits
 - The five agent stages run sequentially in one web request. Keep the page open until the reports arrive.
 - This is **not** a persistent background agent and will not continue a task after the request ends or your phone disconnects.
-- Research has no live web browsing in this starter.
-- It drafts code but does not run shell commands, edit GitHub files, test code, or deploy generated code.
+- Research Agent performs a public DuckDuckGo HTML search for each task and includes the source links it finds. Search availability depends on DuckDuckGo's public endpoint and may occasionally be unavailable; no search API key is required.
+- Coding Agent drafts complete deliverables; Review Agent checks the draft but does not execute tests. The app does not run shell commands, edit GitHub files, or deploy generated project code.
 - Workers AI model access, request limits, and free quotas depend on Cloudflare's current account terms. Free and unlimited usage is not guaranteed.
 - Treat outputs as drafts. Review code and factual claims before using them.
 - Never submit passwords, API keys, or private personal data as task content.
