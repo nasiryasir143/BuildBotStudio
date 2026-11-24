@@ -15,7 +15,7 @@ function decodeHtml(value = "") {
 
 function cleanText(value = "") {
   return decodeHtml(value.replace(/<[^>]*>/g, " "))
-    .replace(/\\s+/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
@@ -25,7 +25,7 @@ function unwrapSearchUrl(href) {
     const redirected = url.searchParams.get("uddg");
     const target = redirected ? new URL(redirected) : url;
     if (target.protocol !== "https:" && target.protocol !== "http:") return "";
-    if (/^(localhost|127\\.|10\\.|192\\.168\\.|169\\.254\\.)/i.test(target.hostname)) return "";
+    if (/^(localhost|127\.|10\.|192\.168\.|169\.254\.)/i.test(target.hostname)) return "";
     return target.href;
   } catch {
     return "";
@@ -35,23 +35,31 @@ function unwrapSearchUrl(href) {
 async function searchWeb(query) {
   const url = "https://html.duckduckgo.com/html/?q=" + encodeURIComponent(query.slice(0, 300));
   const response = await fetch(url, {
-    headers: { "User-Agent": "Mozilla/5.0 (compatible; AICEOStudio/1.0)", "Accept": "text/html" },
+    headers: {
+      "User-Agent": "Mozilla/5.0 (compatible; AICEOStudio/1.0)",
+      "Accept": "text/html"
+    },
     signal: AbortSignal.timeout(10000)
   });
   if (!response.ok) throw new Error("Web search returned HTTP " + response.status);
   const html = await response.text();
+  const anchors = [...html.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)];
   const results = [];
-  const blocks = html.match(/<div[^>]*class="result[^"]*"[^>]*>[\\s\\S]*?<\\/div>\\s*<\\/div>/gi) || [];
-  for (const block of blocks) {
-    const link = block.match(/<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\\s\\S]*?)<\\/a>/i);
-    if (!link) continue;
-    const resultUrl = unwrapSearchUrl(link[1]);
+
+  for (const match of anchors) {
+    const attributes = match[1] || "";
+    if (!/class=["'][^"']*\bresult__a\b/i.test(attributes)) continue;
+    const hrefMatch = attributes.match(/href=["']([^"']+)["']/i);
+    if (!hrefMatch) continue;
+    const resultUrl = unwrapSearchUrl(hrefMatch[1]);
     if (!resultUrl) continue;
-    const snippetMatch = block.match(/<a[^>]*class="result__snippet"[^>]*>([\\s\\S]*?)<\\/a>|<div[^>]*class="result__snippet"[^>]*>([\\s\\S]*?)<\\/div>/i);
+
+    const after = html.slice(match.index + match[0].length, match.index + match[0].length + 1800);
+    const snippetMatch = after.match(/class=["'][^"']*\bresult__snippet\b[^"']*["'][^>]*>([\s\S]*?)<\/(?:a|div)>/i);
     results.push({
-      title: cleanText(link[2]),
+      title: cleanText(match[2]),
       url: resultUrl,
-      snippet: cleanText(snippetMatch?.[1] || snippetMatch?.[2] || "")
+      snippet: cleanText(snippetMatch?.[1] || "")
     });
     if (results.length >= 5) break;
   }
@@ -86,7 +94,7 @@ async function ask(env, system, user, maxTokens = 1200) {
 function authorized(request, env) {
   const expected = env.APP_TOKEN;
   const supplied = request.headers.get("Authorization") || "";
-  return Boolean(expected && supplied === `Bearer ${expected}`);
+  return Boolean(expected && supplied === "Bearer " + expected);
 }
 
 export default {
@@ -99,7 +107,12 @@ export default {
 
     if (url.pathname === "/api/health" && request.method === "GET") {
       if (!authorized(request, env)) return reply({ error: "Unauthorized. Add your access token." }, 401);
-      return reply({ ok: true, service: "AI CEO Studio API", model: env.AI_MODEL || DEFAULT_MODEL, liveResearch: true });
+      return reply({
+        ok: true,
+        service: "AI CEO Studio API",
+        model: env.AI_MODEL || DEFAULT_MODEL,
+        liveResearch: true
+      });
     }
 
     if (url.pathname !== "/api/run") return reply({ error: "API route not found." }, 404);
@@ -122,7 +135,7 @@ export default {
       const plan = await run(
         "AI CEO",
         "You are the CEO of a small AI team. Make a concise plan and assign distinct work. Do not write code. Never claim external actions were performed.",
-        `USER TASK:\\n${task}\\n\\nReturn: goal, 3-5 steps, and clear assignments for Research, Coding, and Review. Keep under 250 words.`,
+        "USER TASK:\n" + task + "\n\nReturn: goal, 3-5 steps, and clear assignments for Research, Coding, and Review. Keep under 250 words.",
         700
       );
 
@@ -136,41 +149,55 @@ export default {
       }
 
       const sourceText = webResults.length
-        ? webResults.map((item, index) => `${index + 1}. ${item.title}\\nURL: ${item.url}\\nSummary: ${item.snippet || "No summary supplied"}`).join("\\n\\n")
+        ? webResults.map((item, index) =>
+            (index + 1) + ". " + item.title + "\nURL: " + item.url +
+            "\nSummary: " + (item.snippet || "No summary supplied")
+          ).join("\n\n")
         : "No live search results were available. Do not invent sources or claim that the web was searched successfully.";
 
       const research = await run(
         "Research Agent",
         "You are a web research analyst. Your ONLY job is research, not coding. Use the supplied live search results. Separate verified facts from assumptions, compare relevant sources, note dates when available, and cite source URLs inline. Never invent facts or sources. If results are absent, say so clearly and give research questions that still need checking.",
-        `USER TASK:\\n${task}\\n\\nCEO PLAN:\\n${plan}\\n\\nLIVE WEB SEARCH RESULTS:\\n${sourceText}\\n\\nWrite concise findings, key facts, risks, and source links. Do not write HTML/CSS/JS or implementation code.`,
+        "USER TASK:\n" + task + "\n\nCEO PLAN:\n" + plan +
+        "\n\nLIVE WEB SEARCH RESULTS:\n" + sourceText +
+        "\n\nWrite concise findings, key facts, risks, and source links. Do not write HTML/CSS/JS or implementation code.",
         1600
       );
 
       const coding = await run(
         "Coding Agent",
         "You are the implementation specialist. Your ONLY job is to produce the requested deliverable. Do not repeat research or the CEO plan. If code is requested, provide complete, runnable code, not fragments; include every required file with clear filenames. Do not claim to have run, tested, committed, or deployed anything. If output is too large, prioritize a complete working core rather than a partial oversized answer.",
-        `USER TASK:\\n${task}\\n\\nCEO PLAN:\\n${plan}\\n\\nRESEARCH FINDINGS:\\n${research}\\n\\nNow produce the actual deliverable. For a website request, include complete HTML, CSS, and JavaScript with all requested features. Do not stop mid-file.`,
+        "USER TASK:\n" + task + "\n\nCEO PLAN:\n" + plan +
+        "\n\nRESEARCH FINDINGS:\n" + research +
+        "\n\nNow produce the actual deliverable. For a website request, include complete HTML, CSS, and JavaScript with all requested features. Do not stop mid-file.",
         4200
       );
 
       const review = await run(
         "Review Agent",
         "You are a strict QA reviewer. Do NOT rewrite the deliverable and do NOT generate replacement code. Check only whether the Coding Agent fulfilled the user's requirements, identify concrete bugs, security/privacy concerns, missing features, and unverified claims. Return PASS or NEEDS FIXES, then a short numbered list. Never claim you executed tests.",
-        `USER REQUIREMENTS:\\n${task}\\n\\nPROPOSED DELIVERABLE:\\n${coding.slice(0, 18000)}\\n\\nReview against the requirements. Be specific and do not create a second implementation.`,
+        "USER REQUIREMENTS:\n" + task + "\n\nPROPOSED DELIVERABLE:\n" +
+        coding.slice(0, 18000) + "\n\nReview against the requirements. Be specific and do not create a second implementation.",
         1200
       );
 
       const final = await run(
         "AI CEO — Final Report",
         "You are the CEO writing the final handoff. Do not reproduce the code or repeat every agent report. State what the team produced, the review status, limitations, and one next step. Clearly distinguish generated output from anything actually tested or deployed.",
-        `USER TASK:\\n${task}\\n\\nPLAN:\\n${plan}\\n\\nRESEARCH:\\n${research.slice(0, 4500)}\\n\\nREVIEW:\\n${review}\\n\\nSummarize the handoff in under 200 words.`,
+        "USER TASK:\n" + task + "\n\nPLAN:\n" + plan +
+        "\n\nRESEARCH:\n" + research.slice(0, 4500) +
+        "\n\nREVIEW:\n" + review + "\n\nSummarize the handoff in under 200 words.",
         700
       );
 
       return reply({
         ok: true,
         model: env.AI_MODEL || DEFAULT_MODEL,
-        liveResearch: { status: webSearchStatus, sourceCount: webResults.length, sources: webResults },
+        liveResearch: {
+          status: webSearchStatus,
+          sourceCount: webResults.length,
+          sources: webResults
+        },
         reports,
         final
       });
