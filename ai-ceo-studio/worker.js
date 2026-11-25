@@ -33,7 +33,7 @@ function unwrapSearchUrl(href) {
 }
 
 async function searchWeb(query) {
-  const q = query.replace(/\\s+/g, " ").trim().slice(0, 260);
+  const q = query.replace(/\s+/g, " ").trim().slice(0, 260);
   const endpoints = [
     "https://www.bing.com/search?format=rss&q=" + encodeURIComponent(q),
     "https://html.duckduckgo.com/html/?q=" + encodeURIComponent(q)
@@ -161,7 +161,7 @@ export default {
       let webResults = [];
       let webSearchStatus = "not_needed";
       try {
-        webResults = await searchWeb(plan + "\\n" + task);
+        webResults = await searchWeb(plan + "\n" + task);
         webSearchStatus = webResults.length ? "success" : "no_results";
       } catch (error) {
         webSearchStatus = "unavailable";
@@ -210,10 +210,10 @@ export default {
 
       const final = await run(
         "AI CEO — Final Report",
-        "You are the CEO writing the final handoff. Do not reproduce code or repeat every agent report. State what research was produced, whether implementation was requested and completed or not required, the review status, limitations, and one next step. Clearly distinguish generated output from anything actually tested or deployed.",
+        "You are the CEO writing the final handoff. Treat Research Agent and Review Agent as authoritative about whether evidence is usable. If the Research Agent says research is unavailable, or the Review Agent says NEEDS FIXES because sources are irrelevant/missing, you MUST say research FAILED/INCOMPLETE and MUST NOT add generic background claims, trends, statistics, or recommendations as if researched. Never infer findings from the topic alone. Only summarize findings explicitly supported by the Research Agent sources. State source count and limitations. Distinguish generated output from anything actually tested or deployed.",
         "USER TASK:\n" + task + "\n\nPLAN:\n" + plan +
         "\n\nRESEARCH:\n" + research.slice(0, 4500) +
-        "\n\nCODING OUTPUT:\n" + coding.slice(0, 2500) + "\n\nREVIEW:\n" + review + "\n\nSummarize the handoff in under 200 words.",
+        "\n\nCODING OUTPUT:\n" + coding.slice(0, 2500) + "\n\nREVIEW:\n" + review + "\n\nLIVE SEARCH STATUS: " + webSearchStatus + "; LIVE SOURCE COUNT: " + webResults.length + "\n\nSummarize the handoff in under 200 words.",
         700
       );
 
