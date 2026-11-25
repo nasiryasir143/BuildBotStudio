@@ -17,7 +17,8 @@ export async function searchWeb(env, query, options = {}) {
     gatewayId: "default",
     query: cleanQuery,
     provider,
-    limit: Math.min(10, Math.max(1, Number(options.limit) || 5))
+    limit: Math.min(10, Math.max(1, Number(options.limit) || 5)),
+    ...(env.WEB_SEARCH_BYOK_ALIAS ? { byokAlias: env.WEB_SEARCH_BYOK_ALIAS } : {})
   });
 
   if (!response || !response.ok) {
