@@ -19,9 +19,17 @@ saveTokenButton.addEventListener("click", () => {
   statusLine.textContent = "Token saved for this browser tab. You can now start a task.";
 });
 
-function markDone(name) {
+function markAgentStatus(name, status = "complete") {
   const card = [...document.querySelectorAll(".agent")].find(x => x.dataset.agent === name);
-  if (card) {
+  if (!card) return;
+  card.classList.remove("done", "blocked", "not-required");
+  if (status === "blocked") {
+    card.classList.add("blocked");
+    card.querySelector("i").textContent = "Blocked";
+  } else if (status === "not_required") {
+    card.classList.add("not-required");
+    card.querySelector("i").textContent = "Not required";
+  } else {
     card.classList.add("done");
     card.querySelector("i").textContent = "Complete";
   }
@@ -107,7 +115,7 @@ runButton.addEventListener("click", async () => {
       throw new Error("The server response is missing agent reports. Please try again.");
     }
     for (const report of data.reports || []) {
-      markDone(report.agent);
+      markAgentStatus(report.agent, report.status || "complete");
       showReport(report.agent, report.output);
     }
     const searchStatus = data.liveResearch?.status || "unknown";
