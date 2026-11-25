@@ -45,6 +45,7 @@ function isRelevantSearchResult(item, query) {
 async function searchWeb(query) {
   const q = query.replace(/\s+/g, " ").trim().slice(0, 420);
   const endpoints = [
+    "https://news.google.com/rss/search?q=" + encodeURIComponent(q) + "&hl=en&gl=PK&ceid=PK:en",
     "https://www.bing.com/search?format=rss&q=" + encodeURIComponent(q),
     "https://html.duckduckgo.com/html/?q=" + encodeURIComponent(q)
   ];
@@ -173,7 +174,7 @@ export default {
       let webResults = [];
       let webSearchStatus = "not_needed";
       try {
-        webResults = await searchWeb(plan + " " + task);
+        webResults = await searchWeb(task + " " + plan);
         webSearchStatus = webResults.length ? "success" : "no_results";
       } catch (error) {
         webSearchStatus = "unavailable";
