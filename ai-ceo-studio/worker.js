@@ -32,8 +32,18 @@ function unwrapSearchUrl(href) {
   }
 }
 
+function isRelevantSearchResult(item, query) {
+  const haystack = (item.title + " " + item.snippet + " " + item.url).toLowerCase();
+  const terms = [...new Set((query.toLowerCase().match(/[a-z][a-z0-9-]{3,}/g) || [])
+    .filter(word => !new Set(["with","from","that","this","about","latest","recent","research","future","report","sources","source","provide","find","online"]).has(word)))];
+  const topicTerms = ["pakistan", "education", "learning", "school", "university", "student", "digital", "distance", "e-learning", "virtual", "hec", "unesco"];
+  const topicMatches = topicTerms.filter(word => haystack.includes(word)).length;
+  const queryMatches = terms.filter(word => haystack.includes(word)).length;
+  return topicMatches >= 2 || (topicMatches >= 1 && queryMatches >= 2);
+}
+
 async function searchWeb(query) {
-  const q = query.replace(/\s+/g, " ").trim().slice(0, 260);
+  const q = query.replace(/\s+/g, " ").trim().slice(0, 420);
   const endpoints = [
     "https://www.bing.com/search?format=rss&q=" + encodeURIComponent(q),
     "https://html.duckduckgo.com/html/?q=" + encodeURIComponent(q)
@@ -59,8 +69,9 @@ async function searchWeb(query) {
           const href = cleanText(block.match(/<link>([\s\S]*?)<\/link>/i)?.[1] || "");
           const snippet = cleanText(block.match(/<description>([\s\S]*?)<\/description>/i)?.[1] || "");
           const safeUrl = unwrapSearchUrl(href);
-          if (title && safeUrl && !results.some(x => x.url === safeUrl)) {
-            results.push({ title, url: safeUrl, snippet });
+          const candidate = { title, url: safeUrl, snippet };
+          if (title && safeUrl && isRelevantSearchResult(candidate, q) && !results.some(x => x.url === safeUrl)) {
+            results.push(candidate);
           }
           if (results.length >= 5) break;
         }
@@ -74,7 +85,8 @@ async function searchWeb(query) {
           if (!safeUrl) continue;
           const after = body.slice(match.index + match[0].length, match.index + match[0].length + 1800);
           const snippet = after.match(/class=["'][^"']*\bresult__snippet\b[^"']*["'][^>]*>([\s\S]*?)<\/(?:a|div)>/i)?.[1] || "";
-          results.push({ title: cleanText(match[2]), url: safeUrl, snippet: cleanText(snippet) });
+          const candidate = { title: cleanText(match[2]), url: safeUrl, snippet: cleanText(snippet) };
+          if (candidate.title && isRelevantSearchResult(candidate, q)) results.push(candidate);
           if (results.length >= 5) break;
         }
       }
@@ -161,7 +173,7 @@ export default {
       let webResults = [];
       let webSearchStatus = "not_needed";
       try {
-        webResults = await searchWeb(plan + "\n" + task);
+        webResults = await searchWeb(plan + " " + task);
         webSearchStatus = webResults.length ? "success" : "no_results";
       } catch (error) {
         webSearchStatus = "unavailable";
@@ -208,14 +220,21 @@ export default {
         1200
       );
 
-      const final = await run(
-        "AI CEO — Final Report",
-        "You are the CEO writing the final handoff. Treat Research Agent and Review Agent as authoritative about whether evidence is usable. If the Research Agent says research is unavailable, or the Review Agent says NEEDS FIXES because sources are irrelevant/missing, you MUST say research FAILED/INCOMPLETE and MUST NOT add generic background claims, trends, statistics, or recommendations as if researched. Never infer findings from the topic alone. Only summarize findings explicitly supported by the Research Agent sources. State source count and limitations. Distinguish generated output from anything actually tested or deployed.",
+      let final = await ask(
+        env,
+        "You are the CEO writing the final handoff. Use only facts explicitly supported by relevant supplied sources. If research is unavailable or review identifies irrelevant/missing sources, say so plainly. Never invent findings, statistics, trends, or recommendations.",
         "USER TASK:\n" + task + "\n\nPLAN:\n" + plan +
         "\n\nRESEARCH:\n" + research.slice(0, 4500) +
         "\n\nCODING OUTPUT:\n" + coding.slice(0, 2500) + "\n\nREVIEW:\n" + review + "\n\nLIVE SEARCH STATUS: " + webSearchStatus + "; LIVE SOURCE COUNT: " + webResults.length + "\n\nSummarize the handoff in under 200 words.",
         700
       );
+
+      const reviewFlagsSourceFailure = /NEEDS FIXES/i.test(review) && /(source|citation|irrelevant|missing|unrelated)/i.test(review);
+      const researchSaysUnavailable = /(research unavailable|no live search results|cannot provide.*sources)/i.test(research);
+      if (webResults.length === 0 || reviewFlagsSourceFailure || researchSaysUnavailable) {
+        final = "RESEARCH FAILED / INCOMPLETE\n\nThe live search did not provide enough relevant, usable sources for this task. No evidence-based findings or recommendations are being presented.\n\nLive search status: " + webSearchStatus + ".\nRelevant source count: " + webResults.length + ".\nReview status: " + (reviewFlagsSourceFailure ? "NEEDS FIXES" : "Not cleared").replace(/\n/g, "") + ".\n\nNext step: repair or retry the live search and verify each source before producing a research summary.";
+      }
+      reports.push({ agent: "AI CEO — Final Report", output: final });
 
       return reply({
         ok: true,
