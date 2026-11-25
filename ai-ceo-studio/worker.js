@@ -30,7 +30,13 @@ function cleanText(value = "") {
 }
 
 function taskLanguage(task = "") {
-  return /[\u0600-\u06FF]/.test(task) ? "Urdu" : "English";
+  // The user's voice input may arrive in Devanagari; prefer Urdu output for either script.
+  return /[\u0600-\u06FF\u0900-\u097F]/.test(task) ? "Urdu" : "English";
+}
+function taskNeedsCode(task = "") {
+  return /\b(code|coding|program|script|website|web app|android app|mobile app|software development|debug)\b/i.test(task) ||
+    /\b(build|develop|implement|make|create)\b.{0,40}\b(app|website|program|script|software)\b/i.test(task) ||
+    /(ویب سائٹ|کوڈ|پروگرام|اسکرپٹ|سافٹ ویئر|ایپ بن|ایپ تیار)/.test(task);
 }
 function isSafePublicUrl(raw) {
   try {
@@ -259,14 +265,15 @@ export default {
         if (researchReport) researchReport.output += "\n\nLive web sources:\n" + links;
       }
 
-      const coding = await run(
+      const coding = taskNeedsCode(task) ? await run(
         "Coding Agent",
         "You are the implementation specialist. First decide whether the user explicitly requested software or code (for example, a website, app, script, program, or code fix). If the task is only research, explanation, analysis, a report, or advice, return exactly the text NOT REQUIRED — The user did not request software or code. Do not rewrite or summarize the research. If implementation was explicitly requested, your ONLY job is to produce that implementation. Do not repeat research or the CEO plan. Provide complete, runnable code, not fragments; include every required file with clear filenames. Do not claim to have run, tested, committed, or deployed anything. If output is too large, prioritize a complete working core rather than a partial oversized answer.",
         "USER TASK:\n" + task + "\n\nCEO PLAN:\n" + plan +
         "\n\nRESEARCH FINDINGS (context only; do not copy or rewrite):\n" + research +
         "\n\nIf the user requested software, produce the complete implementation. If this is research/report/analysis only, return the NOT REQUIRED message specified in your instructions. For a website request, include complete HTML, CSS, and JavaScript with all requested features. Do not stop mid-file.",
         4200
-      );
+      ) : "NOT REQUIRED — The user did not request software or code.";
+      if (!taskNeedsCode(task)) reports.push({ agent: "Coding Agent", output: coding });
 
       const review = await run(
         "Review Agent",
