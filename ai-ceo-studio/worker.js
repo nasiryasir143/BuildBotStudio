@@ -142,7 +142,7 @@ export default {
       let webResults = [];
       let webSearchStatus = "not_needed";
       try {
-        webResults = await searchWeb(task);
+        webResults = await searchWeb(plan + "\n" + task);
         webSearchStatus = webResults.length ? "success" : "no_results";
       } catch (error) {
         webSearchStatus = "unavailable";
