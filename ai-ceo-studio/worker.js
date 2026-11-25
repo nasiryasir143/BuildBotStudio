@@ -63,7 +63,7 @@ async function searchWeb(query) {
       const body = await response.text();
       const results = [];
 
-      if (endpoint.includes("format=rss")) {
+      if (endpoint.includes("format=rss") || endpoint.includes("news.google.com/rss")) {
         for (const item of body.matchAll(/<item>([\s\S]*?)<\/item>/gi)) {
           const block = item[1];
           const title = cleanText(block.match(/<title>([\s\S]*?)<\/title>/i)?.[1] || "");
