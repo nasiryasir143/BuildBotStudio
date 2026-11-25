@@ -174,7 +174,7 @@ export default {
       let webResults = [];
       let webSearchStatus = "not_needed";
       try {
-        const searchBrief = (task + " " + plan).replace(/\\s+/g, " ").trim().slice(0, 420);
+        const searchBrief = task.replace(/\\s+/g, " ").trim().slice(0, 420);
         webResults = await searchWeb(searchBrief);
         webSearchStatus = webResults.length ? "success" : "no_results";
       } catch (error) {
