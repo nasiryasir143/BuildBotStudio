@@ -96,8 +96,16 @@ runButton.addEventListener("click", async () => {
       },
       body: JSON.stringify({ task })
     });
-    const data = await response.json();
+    let data;
+    try {
+      data = await response.json();
+    } catch {
+      throw new Error("The server returned an unreadable response. Check the Worker deployment and try again.");
+    }
     if (!response.ok) throw new Error(data.error || "Worker request failed.");
+    if (!data || !Array.isArray(data.reports)) {
+      throw new Error("The server response is missing agent reports. Please try again.");
+    }
     for (const report of data.reports || []) {
       markDone(report.agent);
       showReport(report.agent, report.output);
@@ -107,9 +115,9 @@ runButton.addEventListener("click", async () => {
     const searchMessage = searchStatus === "disabled"
       ? "Web search is disabled; no search charges were triggered."
       : searchStatus === "unavailable"
-        ? "Web search is unavailable; check AI Gateway credits or provider-key setup."
+        ? "Web search is unavailable; no verified live sources were retrieved."
         : searchStatus === "no_results"
-          ? "Web search ran but found no results."
+          ? "Web search ran but found no relevant results."
           : "Web research: " + sourceCount + " sources.";
     statusLine.textContent = "Finished with " + data.model + ". " + searchMessage + " Review suggestions before using them.";
   } catch (error) {
