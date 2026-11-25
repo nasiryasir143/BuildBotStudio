@@ -14,7 +14,10 @@ function decodeHtml(value = "") {
 }
 
 function cleanText(value = "") {
-  return decodeHtml(value.replace(/<[^>]*>/g, " "))
+  return decodeHtml(value
+    .replace(/^<!\[CDATA\[/i, "")
+    .replace(/\]\]>$/i, "")
+    .replace(/<[^>]*>/g, " "))
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -37,7 +40,9 @@ function isRelevantSearchResult(item, query) {
   const stopWords = new Set(["with","from","that","this","about","latest","recent","research","future","report","reports","sources","source","provide","find","online","using","into","their","there","what","when","where","which","will","have","been","2026","2025"]);
   const terms = [...new Set((query.toLowerCase().match(/[a-z][a-z0-9-]{3,}/g) || [])
     .filter(word => !stopWords.has(word)))];
-  if (!terms.length) return false;
+  // For Urdu and other non-Latin queries, let the search engine's own
+  // query matching stand; the Latin-only tokenizer cannot score those terms.
+  if (!terms.length) return /[^\u0000-\u007f]/.test(query) && Boolean(item.title && item.url);
   const matches = terms.filter(word => haystack.includes(word));
   return matches.length >= Math.min(2, terms.length);
 }
@@ -45,7 +50,7 @@ function isRelevantSearchResult(item, query) {
 async function searchWeb(query) {
   const q = query.replace(/\s+/g, " ").trim().slice(0, 420);
   const endpoints = [
-    "https://news.google.com/rss/search?q=" + encodeURIComponent(q) + "&hl=en&gl=PK&ceid=PK:en",
+    "https://news.google.com/rss/search?q=" + encodeURIComponent(q) + "&hl=ur&gl=PK&ceid=PK:ur",
     "https://www.bing.com/search?format=rss&q=" + encodeURIComponent(q),
     "https://html.duckduckgo.com/html/?q=" + encodeURIComponent(q)
   ];
@@ -174,7 +179,7 @@ export default {
       let webResults = [];
       let webSearchStatus = "not_needed";
       try {
-        const searchBrief = task.replace(/\\s+/g, " ").trim().slice(0, 420);
+        const searchBrief = task.replace(/\s+/g, " ").trim().slice(0, 420);
         webResults = await searchWeb(searchBrief);
         webSearchStatus = webResults.length ? "success" : "no_results";
       } catch (error) {
