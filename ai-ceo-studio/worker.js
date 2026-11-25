@@ -49,7 +49,7 @@ async function readLimitedText(response, maxBytes = 120000) {
   return output+decoder.decode();
 }
 async function inspectSource(item) {
-  const checked={...item,linkStatus:"not_checked",httpStatus:null,finalUrl:item.url,pageTitle:"",publishedDate:""};
+  const checked={...item,linkStatus:"not_checked",httpStatus:null,finalUrl:item.url,pageTitle:"",publishedDate:item.publishedDate || ""};
   if(!isSafePublicUrl(item.url)){checked.linkStatus="unsafe_or_invalid_url";return checked;}
   try {
     const response=await fetch(item.url,{headers:{"User-Agent":"Mozilla/5.0 (compatible; AICEOStudio/1.0)","Accept":"text/html,application/pdf,application/xml,text/plain,*/*"},redirect:"follow",signal:AbortSignal.timeout(10000)});
@@ -150,7 +150,7 @@ export default {
       const language = taskLanguage(task);
       const plan = await run(
         "AI CEO",
-        "You are the CEO of a small AI team. Reply in " + language + ". Preserve every explicit institution, organization, date range, and deliverable requirement from the user. Never replace named institutions with invented ones. Classify the task and assign distinct work. Only assign implementation when software/code is explicitly requested; otherwise mark Coding Agent NOT REQUIRED. Never invent organizations, databases, reports, statistics, or sources.",
+        "You are the CEO of a small AI team. Reply in natural Pakistani Urdu script when the task is Urdu, otherwise English. " + Preserve every explicit institution, organization, date range, and deliverable requirement from the user. Never replace named institutions with invented ones. Classify the task and assign distinct work. Only assign implementation when software/code is explicitly requested; otherwise mark Coding Agent NOT REQUIRED. Never invent organizations, databases, reports, statistics, or sources.",
         "USER TASK:\n" + task + "\n\nReturn goal, task type, 3-5 steps, and separate assignments. Preserve named requirements such as HEC or UNSC if present. Write in " + language + " and keep under 250 words.",
         700
       );
