@@ -38,6 +38,10 @@ function taskNeedsCode(task = "") {
     /\b(build|develop|implement|make|create)\b.{0,40}\b(app|website|program|script|software)\b/i.test(task) ||
     /(ویب سائٹ|کوڈ|پروگرام|اسکرپٹ|سافٹ ویئر|ایپ بن|ایپ تیار)/.test(task);
 }
+function taskNeedsLiveEvidence(task = "") {
+  return /\b(20\d{2}|current|currently|latest|recent|today|this year|trend|trends|statistics|stats|data|research|sources?|references?|citations?|reliable|credible|verified|up[- ]to[- ]date)\b/i.test(task) ||
+    /(تازہ|حالیہ|آج|اس سال|رجحان|رجحانات|اعداد|وشمار|مستند|قابلِ اعتماد|ذرائع|حوالہ جات|تحقیق|تصدیق|202\d)/.test(task);
+}
 function isSafePublicUrl(raw) {
   try {
     const u = new URL(raw), h = u.hostname.toLowerCase();
@@ -160,6 +164,35 @@ export default {
       };
 
       const language = taskLanguage(task);
+
+      // Never fabricate a time-sensitive/source-based report when live search is disabled.
+      // Return a clear blocked result before spending any model calls on unsupported claims.
+      if (env.WEB_SEARCH_ENABLED !== "true" && taskNeedsLiveEvidence(task)) {
+        const urdu = language === "Urdu";
+        const reports = [
+          { agent: "AI CEO", output: urdu
+            ? "منصوبہ روکا گیا: آپ کے کام میں تازہ معلومات، تاریخوں یا مستند ذرائع کی ضرورت ہے، لیکن لائیو ویب سرچ بند ہے۔ اس لیے غیر مصدقہ منصوبہ یا حقائق تیار نہیں کیے جائیں گے۔"
+            : "Plan blocked: this task requires current information, dates, or reliable sources, but live web search is disabled. No unsupported plan or facts will be generated." },
+          { agent: "Research Agent", output: urdu
+            ? "BLOCKED — لائیو ویب سرچ بند ہے۔ کوئی تلاش یا ذریعہ تصدیق نہیں کیا گیا۔"
+            : "BLOCKED — Live web search is disabled. No search or source verification was performed." },
+          { agent: "Coding Agent", output: "NOT REQUIRED — The user did not request software or code." },
+          { agent: "Review Agent", output: urdu
+            ? "BLOCKED — اصل کام کے لیے مستند شواہد درکار ہیں، مگر ویب سرچ بند ہونے کی وجہ سے ان کی جانچ ممکن نہیں۔ کسی غیر مصدقہ دعوے کو PASS نہیں کہا جا سکتا۔"
+            : "BLOCKED — The task requires reliable evidence, but live search is disabled. Unsupported claims cannot be marked PASS." },
+          { agent: "AI CEO — Final Report", output: urdu
+            ? "رپورٹ تیار نہیں کی گئی، کیونکہ مستند اور تازہ ذرائع کی تصدیق ممکن نہیں تھی۔ ویب سرچ بند ہے؛ کوئی لائیو تحقیق، تاریخ یا ذریعہ چیک نہیں کیا گیا۔ سرچ کی ادائیگی یا کریڈٹ استعمال نہیں ہوا۔"
+            : "The requested evidence-based report was not generated because reliable, current sources could not be verified. Live search is disabled; no research, dates, or sources were checked. No search charges or credits were triggered." }
+        ];
+        return reply({
+          ok: true,
+          model: env.AI_MODEL || DEFAULT_MODEL,
+          liveResearch: { status: "disabled", provider: env.WEB_SEARCH_PROVIDER || "ceramic", sourceCount: 0, sources: [] },
+          reports,
+          final: reports[4].output
+        });
+      }
+
       const plan = await run(
         "AI CEO",
         "You are the AI CEO coordinating the team. Reply in natural Pakistani Urdu script when the task is Urdu, otherwise English. Preserve the user's exact goal, scope, named entities, dates, language, and requested deliverables. Do not expand the task or invent requirements, organizations, people, tools, websites, meetings, documents, statistics, or actions. Use only these exact role names: AI CEO, Research Agent, Coding Agent, Review Agent, AI CEO Final Report. Give a concise, grammatically correct plan. Research Agent researches only what the user asked. Coding Agent works only when software/code is explicitly requested; otherwise state NOT REQUIRED. Review Agent checks only explicit user requirements and evidence. The final report must answer the user's task, not merely repeat the plan.",
