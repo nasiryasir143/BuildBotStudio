@@ -116,8 +116,8 @@ runButton.addEventListener("click", async () => {
     }
     for (const report of data.reports || []) {
       const output = String(report.output || "");
-      const inferredStatus = report.status || (/^\\s*(BLOCKED|NOT REQUIRED)\\b/i.test(output)
-        ? (/^\\s*NOT REQUIRED\\b/i.test(output) ? "not_required" : "blocked")
+      const inferredStatus = report.status || (/^\s*(BLOCKED|NOT REQUIRED)\b/i.test(output)
+        ? (/^\s*NOT REQUIRED\b/i.test(output) ? "not_required" : "blocked")
         : "complete");
       markAgentStatus(report.agent, inferredStatus);
       showReport(report.agent, report.output);
