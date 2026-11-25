@@ -1,3 +1,5 @@
+import { searchWeb } from "./worker/agent/web-search.js";
+
 const jsonHeaders = { "Content-Type": "application/json; charset=utf-8" };
 const DEFAULT_MODEL = "@cf/zai-org/glm-4.7-flash";
 const reply = (data, status = 200) =>
@@ -65,87 +67,20 @@ async function inspectSource(item) {
   return checked;
 }
 
-function unwrapSearchUrl(href) {
-  try {
-    const url = new URL(href.startsWith("//") ? "https:" + href : href, "https://duckduckgo.com");
-    const redirected = url.searchParams.get("uddg");
-    const target = redirected ? new URL(redirected) : url;
-    if (target.protocol !== "https:" && target.protocol !== "http:") return "";
-    if (/^(localhost|127\.|10\.|192\.168\.|169\.254\.)/i.test(target.hostname)) return "";
-    return target.href;
-  } catch {
-    return "";
+function buildSearchQueries(task, baseQuery) {
+  const queries = [baseQuery];
+  if (/\\bHEC\\b/i.test(task)) {
+    queries.push("Pakistan HEC official online education digital learning policy reports 2024 2026");
   }
-}
-
-function isRelevantSearchResult(item, query) {
-  const haystack = (item.title + " " + item.snippet + " " + item.url).toLowerCase();
-  const stopWords = new Set(["with","from","that","this","about","latest","recent","research","future","report","reports","sources","source","provide","find","online","using","into","their","there","what","when","where","which","will","have","been","2026","2025"]);
-  const terms = [...new Set((query.toLowerCase().match(/[a-z][a-z0-9-]{3,}/g) || [])
-    .filter(word => !stopWords.has(word)))];
-  // Reject unrelated search-engine noise. Queries are normalized to English
-  // before search, so require at least two meaningful query terms to appear.
-  if (!terms.length) return false;
-  const matches = terms.filter(word => haystack.includes(word));
-  return matches.length >= Math.min(2, terms.length);
-}
-
-async function searchWeb(query) {
-  const q = query.replace(/\s+/g, " ").trim().slice(0, 420);
-  const endpoints = [
-    "https://news.google.com/rss/search?q=" + encodeURIComponent(q) + "&hl=ur&gl=PK&ceid=PK:ur",
-    "https://www.bing.com/search?format=rss&q=" + encodeURIComponent(q),
-    "https://html.duckduckgo.com/html/?q=" + encodeURIComponent(q)
-  ];
-
-  for (const endpoint of endpoints) {
-    try {
-      const response = await fetch(endpoint, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; AICEOStudio/1.0)",
-          "Accept": "application/rss+xml, application/xml, text/html"
-        },
-        signal: AbortSignal.timeout(12000)
-      });
-      if (!response.ok) continue;
-      const body = await response.text();
-      const results = [];
-
-      if (endpoint.includes("format=rss") || endpoint.includes("news.google.com/rss")) {
-        for (const item of body.matchAll(/<item>([\s\S]*?)<\/item>/gi)) {
-          const block = item[1];
-          const title = cleanText(block.match(/<title>([\s\S]*?)<\/title>/i)?.[1] || "");
-          const href = cleanText(block.match(/<link>([\s\S]*?)<\/link>/i)?.[1] || "");
-          const snippet = cleanText(block.match(/<description>([\s\S]*?)<\/description>/i)?.[1] || "");
-          const safeUrl = unwrapSearchUrl(href);
-          const candidate = { title, url: safeUrl, snippet };
-          if (title && safeUrl && isRelevantSearchResult(candidate, q) && !results.some(x => x.url === safeUrl)) {
-            results.push(candidate);
-          }
-          if (results.length >= 5) break;
-        }
-      } else {
-        const anchors = [...body.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)];
-        for (const match of anchors) {
-          const attrs = match[1] || "";
-          if (!/class=["'][^"']*\bresult__a\b/i.test(attrs)) continue;
-          const href = attrs.match(/href=["']([^"']+)["']/i)?.[1];
-          const safeUrl = href ? unwrapSearchUrl(href) : "";
-          if (!safeUrl) continue;
-          const after = body.slice(match.index + match[0].length, match.index + match[0].length + 1800);
-          const snippet = after.match(/class=["'][^"']*\bresult__snippet\b[^"']*["'][^>]*>([\s\S]*?)<\/(?:a|div)>/i)?.[1] || "";
-          const candidate = { title: cleanText(match[2]), url: safeUrl, snippet: cleanText(snippet) };
-          if (candidate.title && isRelevantSearchResult(candidate, q)) results.push(candidate);
-          if (results.length >= 5) break;
-        }
-      }
-      if (results.length) return results;
-    } catch {
-      // Try the next public search endpoint.
-    }
+  if (/\\bPIE\\b/i.test(task) || /Pakistan Institute of Education/i.test(task)) {
+    queries.push('"Pakistan Institute of Education" Pakistan online education digital learning 2024 2026');
   }
-  return [];
+  if (queries.length === 1) {
+    queries.push("Pakistan online education digital learning research report 2024 2026");
+  }
+  return [...new Set(queries.map(q => q.replace(/\\s+/g, " ").trim()).filter(Boolean))].slice(0, 3);
 }
+
 async function ask(env, system, user, maxTokens = 1200) {
   if (!env.AI) throw new Error("Workers AI binding AI is missing.");
   const model = env.AI_MODEL || DEFAULT_MODEL;
@@ -191,7 +126,7 @@ export default {
         ok: true,
         service: "AI CEO Studio API",
         model: env.AI_MODEL || DEFAULT_MODEL,
-        liveResearch: true
+        liveResearch: { enabled: env.WEB_SEARCH_ENABLED === "true", provider: env.WEB_SEARCH_PROVIDER || "ceramic" }
       });
     }
 
@@ -221,19 +156,40 @@ export default {
       );
 
       let webResults = [];
-      let webSearchStatus = "not_needed";
-      try {
-        const searchBrief = await ask(
-          env,
-          "Convert the user's request into one concise English web search query. Preserve the exact country, subject, and requested date range. Do not answer the request. Output only the search query, with no quotes or explanation.",
-          task,
-          180
-        );
-        webResults = await searchWeb(searchBrief.replace(/^["']|["']$/g, "").trim().slice(0, 420));
-        webResults = await Promise.all(webResults.map(inspectSource));
-        webSearchStatus = webResults.length ? "success" : "no_results";
-      } catch (error) {
-        webSearchStatus = "unavailable";
+      let webSearchStatus = env.WEB_SEARCH_ENABLED === "true" ? "unavailable" : "disabled";
+      let webSearchError = "";
+      if (env.WEB_SEARCH_ENABLED === "true") {
+        try {
+          const searchBrief = await ask(
+            env,
+            "Convert the user's request into one concise English web search query. Preserve the exact country, subject, named institutions, and requested date range. Do not answer the request. Output only the search query, with no quotes or explanation.",
+            task,
+            180
+          );
+          const queries = buildSearchQueries(task, searchBrief.replace(/^["']|["']$/g, "").trim().slice(0, 420));
+          const attempts = await Promise.allSettled(
+            queries.map(query => searchWeb(env, query, { provider: env.WEB_SEARCH_PROVIDER || "ceramic", limit: 5 }))
+          );
+          const seen = new Set();
+          for (const attempt of attempts) {
+            if (attempt.status === "rejected") {
+              webSearchError = String(attempt.reason?.message || attempt.reason || "Search request failed.");
+              continue;
+            }
+            for (const item of attempt.value) {
+              if (!seen.has(item.url) && webResults.length < 10) {
+                seen.add(item.url);
+                webResults.push(item);
+              }
+            }
+          }
+          webResults = await Promise.all(webResults.map(inspectSource));
+          webSearchStatus = webResults.length ? "success" :
+            (attempts.some(item => item.status === "fulfilled") ? "no_results" : "unavailable");
+        } catch (error) {
+          webSearchStatus = "unavailable";
+          webSearchError = String(error?.message || error);
+        }
       }
 
       const sourceText = webResults.length
@@ -319,6 +275,8 @@ export default {
         model: env.AI_MODEL || DEFAULT_MODEL,
         liveResearch: {
           status: webSearchStatus,
+          provider: env.WEB_SEARCH_PROVIDER || "ceramic",
+          error: webSearchError || undefined,
           sourceCount: webResults.length,
           sources: webResults
         },
