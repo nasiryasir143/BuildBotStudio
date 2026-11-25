@@ -102,7 +102,16 @@ runButton.addEventListener("click", async () => {
       markDone(report.agent);
       showReport(report.agent, report.output);
     }
-    statusLine.textContent = "Finished with " + data.model + ". Web research: " + (data.liveResearch?.sourceCount ?? 0) + " sources. Review suggestions before using them.";
+    const searchStatus = data.liveResearch?.status || "unknown";
+    const sourceCount = data.liveResearch?.sourceCount ?? 0;
+    const searchMessage = searchStatus === "disabled"
+      ? "Web search is disabled; no search charges were triggered."
+      : searchStatus === "unavailable"
+        ? "Web search is unavailable; check AI Gateway credits or provider-key setup."
+        : searchStatus === "no_results"
+          ? "Web search ran but found no results."
+          : "Web research: " + sourceCount + " sources.";
+    statusLine.textContent = "Finished with " + data.model + ". " + searchMessage + " Review suggestions before using them.";
   } catch (error) {
     statusLine.textContent = "Could not finish: " + error.message;
     const empty = document.createElement("div");
