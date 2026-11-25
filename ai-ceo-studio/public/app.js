@@ -115,7 +115,11 @@ runButton.addEventListener("click", async () => {
       throw new Error("The server response is missing agent reports. Please try again.");
     }
     for (const report of data.reports || []) {
-      markAgentStatus(report.agent, report.status || "complete");
+      const output = String(report.output || "");
+      const inferredStatus = report.status || (/^\\s*(BLOCKED|NOT REQUIRED)\\b/i.test(output)
+        ? (/^\\s*NOT REQUIRED\\b/i.test(output) ? "not_required" : "blocked")
+        : "complete");
+      markAgentStatus(report.agent, inferredStatus);
       showReport(report.agent, report.output);
     }
     const searchStatus = data.liveResearch?.status || "unknown";
