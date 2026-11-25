@@ -53,11 +53,11 @@ async function searchWeb(query) {
       const results = [];
 
       if (endpoint.includes("format=rss")) {
-        for (const item of body.matchAll(/<item>([\\s\\S]*?)<\\/item>/gi)) {
+        for (const item of body.matchAll(/<item>([\s\S]*?)<\/item>/gi)) {
           const block = item[1];
-          const title = cleanText(block.match(/<title>([\\s\\S]*?)<\\/title>/i)?.[1] || "");
-          const href = cleanText(block.match(/<link>([\\s\\S]*?)<\\/link>/i)?.[1] || "");
-          const snippet = cleanText(block.match(/<description>([\\s\\S]*?)<\\/description>/i)?.[1] || "");
+          const title = cleanText(block.match(/<title>([\s\S]*?)<\/title>/i)?.[1] || "");
+          const href = cleanText(block.match(/<link>([\s\S]*?)<\/link>/i)?.[1] || "");
+          const snippet = cleanText(block.match(/<description>([\s\S]*?)<\/description>/i)?.[1] || "");
           const safeUrl = unwrapSearchUrl(href);
           if (title && safeUrl && !results.some(x => x.url === safeUrl)) {
             results.push({ title, url: safeUrl, snippet });
@@ -65,15 +65,15 @@ async function searchWeb(query) {
           if (results.length >= 5) break;
         }
       } else {
-        const anchors = [...body.matchAll(/<a\\b([^>]*)>([\\s\\S]*?)<\\/a>/gi)];
+        const anchors = [...body.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)];
         for (const match of anchors) {
           const attrs = match[1] || "";
-          if (!/class=["'][^"']*\\bresult__a\\b/i.test(attrs)) continue;
+          if (!/class=["'][^"']*\bresult__a\b/i.test(attrs)) continue;
           const href = attrs.match(/href=["']([^"']+)["']/i)?.[1];
           const safeUrl = href ? unwrapSearchUrl(href) : "";
           if (!safeUrl) continue;
           const after = body.slice(match.index + match[0].length, match.index + match[0].length + 1800);
-          const snippet = after.match(/class=["'][^"']*\\bresult__snippet\\b[^"']*["'][^>]*>([\\s\\S]*?)<\\/(?:a|div)>/i)?.[1] || "";
+          const snippet = after.match(/class=["'][^"']*\bresult__snippet\b[^"']*["'][^>]*>([\s\S]*?)<\/(?:a|div)>/i)?.[1] || "";
           results.push({ title: cleanText(match[2]), url: safeUrl, snippet: cleanText(snippet) });
           if (results.length >= 5) break;
         }
