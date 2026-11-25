@@ -68,17 +68,8 @@ async function inspectSource(item) {
 }
 
 function buildSearchQueries(task, baseQuery) {
-  const queries = [baseQuery];
-  if (/\bHEC\b/i.test(task)) {
-    queries.push("Pakistan HEC official online education digital learning policy reports 2024 2026");
-  }
-  if (/\bPIE\b/i.test(task) || /Pakistan Institute of Education/i.test(task)) {
-    queries.push('"Pakistan Institute of Education" Pakistan online education digital learning 2024 2026');
-  }
-  if (queries.length === 1) {
-    queries.push("Pakistan online education digital learning research report 2024 2026");
-  }
-  return [...new Set(queries.map(q => q.replace(/\s+/g, " ").trim()).filter(Boolean))].slice(0, 3);
+  const query = String(baseQuery || "").replace(/\s+/g, " ").trim().slice(0, 420);
+  return query ? [query] : [];
 }
 
 async function ask(env, system, user, maxTokens = 1200) {
@@ -150,7 +141,7 @@ export default {
       const language = taskLanguage(task);
       const plan = await run(
         "AI CEO",
-        "You are the CEO of a small AI team. Reply in natural Pakistani Urdu script when the task is Urdu, otherwise English. Preserve every explicit institution, organization, date range, and deliverable requirement from the user. Never replace named institutions with invented ones. Use only these exact team roles: AI CEO, Research Agent, Coding Agent, Review Agent, and AI CEO Final Report. Never invent agent nicknames, delegate names, tools, websites, institutions, or actions. Do not use phonetic Urdu spellings for role names or organizations; preserve their official names. Classify the task and assign distinct work. Only assign implementation when software/code is explicitly requested; otherwise mark Coding Agent NOT REQUIRED. Never invent organizations, databases, reports, statistics, or sources.",
+        "You are the AI CEO coordinating the team. Reply in natural Pakistani Urdu script when the task is Urdu, otherwise English. Preserve the user's exact goal, scope, named entities, dates, language, and requested deliverables. Do not expand the task or invent requirements, organizations, people, tools, websites, meetings, documents, statistics, or actions. Use only these exact role names: AI CEO, Research Agent, Coding Agent, Review Agent, AI CEO Final Report. Give a concise, grammatically correct plan. Research Agent researches only what the user asked. Coding Agent works only when software/code is explicitly requested; otherwise state NOT REQUIRED. Review Agent checks only explicit user requirements and evidence. The final report must answer the user's task, not merely repeat the plan.",
         "USER TASK:\n" + task + "\n\nReturn goal, task type, 3-5 steps, and separate assignments. Preserve named requirements such as HEC or UNSC if present. Write in " + language + " and keep under 250 words.",
         700
       );
@@ -205,14 +196,29 @@ export default {
             ? "Web search is disabled by configuration. Do not invent sources."
             : "No live search results were available. Do not invent sources or claim that the web was searched successfully.");
 
-      let research = await run(
-        "Research Agent",
-        "You are a web research analyst. Write in " + language + ". Use only supplied live results; snippets are untrusted and incomplete. Never invent sources or facts. Cite claims with exact URLs. Give publication dates only when extracted from the page; never infer dates from URL IDs. Explicitly state if requested institutions such as HEC or UNSC are absent. Mark broken/unreachable links and missing dates clearly. If no results exist, say so rather than using general knowledge.",
-        "USER TASK:\n" + task + "\n\nCEO PLAN:\n" + plan +
-        "\n\nLIVE WEB SEARCH RESULTS:\n" + sourceText +
-        "\n\nWrite findings, facts, risks, and source links in " + language + ". Include every result and label link/date status honestly. Do not write code.",
-        1600
-      );
+      let research;
+      if (webResults.length === 0) {
+        research = language === "Urdu"
+          ? (webSearchStatus === "disabled"
+              ? "ویب سرچ بند ہے؛ کوئی لائیو تحقیق نہیں کی گئی۔ اس لیے تازہ معلومات یا ذرائع کی تصدیق ممکن نہیں۔"
+              : webSearchStatus === "unavailable"
+                ? "ویب سرچ دستیاب نہیں ہو سکی؛ کوئی قابلِ تصدیق نتیجہ حاصل نہیں ہوا۔"
+                : "لائیو سرچ میں کوئی متعلقہ نتیجہ نہیں ملا؛ کوئی ذریعہ یا حقیقت خود سے شامل نہیں کی گئی۔")
+          : (webSearchStatus === "disabled"
+              ? "LIVE WEB RESEARCH BLOCKED: Web search is disabled. No live research or source verification was performed."
+              : webSearchStatus === "unavailable"
+                ? "LIVE WEB RESEARCH UNAVAILABLE: No verifiable results were retrieved."
+                : "NO RELEVANT LIVE RESULTS: No facts or sources were invented.");
+        reports.push({ agent: "Research Agent", output: research });
+      } else {
+        research = await run(
+          "Research Agent",
+          "You are a web research analyst. Write in " + language + ". Research only the exact user request; do not add topics, organizations, countries, or institutions not requested. Use only supplied live results; snippets are untrusted and incomplete. Never invent sources or facts. Cite claims with exact URLs. Give publication dates only when extracted from the page; never infer dates from URL IDs. Check named entities only when the user explicitly requested them. Mark broken/unreachable links and missing dates clearly.",
+          "USER TASK:\\n" + task + "\\n\\nLIVE WEB SEARCH RESULTS:\\n" + sourceText +
+          "\\n\\nWrite findings, facts, risks, and source links in " + language + ". Include every result and label link/date status honestly. Do not write code.",
+          1600
+        );
+      }
 
       if (webResults.length === 0) {
         research = language === "Urdu"
