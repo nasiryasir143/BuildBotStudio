@@ -170,17 +170,17 @@ export default {
       if (env.WEB_SEARCH_ENABLED !== "true" && taskNeedsLiveEvidence(task)) {
         const urdu = language === "Urdu";
         const reports = [
-          { agent: "AI CEO", output: urdu
+          { agent: "AI CEO", status: "blocked", output: urdu
             ? "منصوبہ روکا گیا: آپ کے کام میں تازہ معلومات، تاریخوں یا مستند ذرائع کی ضرورت ہے، لیکن لائیو ویب سرچ بند ہے۔ اس لیے غیر مصدقہ منصوبہ یا حقائق تیار نہیں کیے جائیں گے۔"
             : "Plan blocked: this task requires current information, dates, or reliable sources, but live web search is disabled. No unsupported plan or facts will be generated." },
-          { agent: "Research Agent", output: urdu
+          { agent: "Research Agent", status: "blocked", output: urdu
             ? "BLOCKED — لائیو ویب سرچ بند ہے۔ کوئی تلاش یا ذریعہ تصدیق نہیں کیا گیا۔"
             : "BLOCKED — Live web search is disabled. No search or source verification was performed." },
-          { agent: "Coding Agent", output: "NOT REQUIRED — The user did not request software or code." },
-          { agent: "Review Agent", output: urdu
+          { agent: "Coding Agent", status: "not_required", output: "NOT REQUIRED — The user did not request software or code." },
+          { agent: "Review Agent", status: "blocked", output: urdu
             ? "BLOCKED — اصل کام کے لیے مستند شواہد درکار ہیں، مگر ویب سرچ بند ہونے کی وجہ سے ان کی جانچ ممکن نہیں۔ کسی غیر مصدقہ دعوے کو PASS نہیں کہا جا سکتا۔"
             : "BLOCKED — The task requires reliable evidence, but live search is disabled. Unsupported claims cannot be marked PASS." },
-          { agent: "AI CEO — Final Report", output: urdu
+          { agent: "AI CEO — Final Report", status: "blocked", output: urdu
             ? "رپورٹ تیار نہیں کی گئی، کیونکہ مستند اور تازہ ذرائع کی تصدیق ممکن نہیں تھی۔ ویب سرچ بند ہے؛ کوئی لائیو تحقیق، تاریخ یا ذریعہ چیک نہیں کیا گیا۔ سرچ کی ادائیگی یا کریڈٹ استعمال نہیں ہوا۔"
             : "The requested evidence-based report was not generated because reliable, current sources could not be verified. Live search is disabled; no research, dates, or sources were checked. No search charges or credits were triggered." }
         ];
