@@ -134,8 +134,8 @@ export default {
 
       const plan = await run(
         "AI CEO",
-        "You are the CEO of a small AI team. Make a concise plan and assign distinct work. Do not write code. Never claim external actions were performed.",
-        "USER TASK:\n" + task + "\n\nReturn: goal, 3-5 steps, and clear assignments for Research, Coding, and Review. Keep under 250 words.",
+        "You are the CEO of a small AI team. First classify the request as research/analysis, implementation, or both. Assign distinct work. Only assign implementation to Coding Agent when the user explicitly asks to build, create, write, fix, or modify code/software. For research-only tasks, tell Coding Agent that implementation is not required. Do not write code. Never claim external actions were performed.",
+        "USER TASK:\n" + task + "\n\nReturn: goal, task type (research/analysis, implementation, or both), 3-5 steps, and clear separate assignments. If no software/code is requested, explicitly mark Coding Agent as NOT REQUIRED. Keep under 250 words.",
         700
       );
 
@@ -174,27 +174,27 @@ export default {
 
       const coding = await run(
         "Coding Agent",
-        "You are the implementation specialist. Your ONLY job is to produce the requested deliverable. Do not repeat research or the CEO plan. If code is requested, provide complete, runnable code, not fragments; include every required file with clear filenames. Do not claim to have run, tested, committed, or deployed anything. If output is too large, prioritize a complete working core rather than a partial oversized answer.",
+        "You are the implementation specialist. First decide whether the user explicitly requested software or code (for example, a website, app, script, program, or code fix). If the task is only research, explanation, analysis, a report, or advice, return exactly: "NOT REQUIRED — The user did not request software or code." Do not rewrite or summarize the research. If implementation was explicitly requested, your ONLY job is to produce that implementation. Do not repeat research or the CEO plan. Provide complete, runnable code, not fragments; include every required file with clear filenames. Do not claim to have run, tested, committed, or deployed anything. If output is too large, prioritize a complete working core rather than a partial oversized answer.",
         "USER TASK:\n" + task + "\n\nCEO PLAN:\n" + plan +
-        "\n\nRESEARCH FINDINGS:\n" + research +
-        "\n\nNow produce the actual deliverable. For a website request, include complete HTML, CSS, and JavaScript with all requested features. Do not stop mid-file.",
+        "\n\nRESEARCH FINDINGS (context only; do not copy or rewrite):\n" + research +
+        "\n\nIf the user requested software, produce the complete implementation. If this is research/report/analysis only, return the NOT REQUIRED message specified in your instructions. For a website request, include complete HTML, CSS, and JavaScript with all requested features. Do not stop mid-file.",
         4200
       );
 
       const review = await run(
         "Review Agent",
-        "You are a strict QA reviewer. Do NOT rewrite the deliverable and do NOT generate replacement code. Check only whether the Coding Agent fulfilled the user's requirements, identify concrete bugs, security/privacy concerns, missing features, and unverified claims. Return PASS or NEEDS FIXES, then a short numbered list. Never claim you executed tests.",
-        "USER REQUIREMENTS:\n" + task + "\n\nPROPOSED DELIVERABLE:\n" +
-        coding.slice(0, 18000) + "\n\nReview against the requirements. Be specific and do not create a second implementation.",
+        "You are a strict QA reviewer. Review the Research Agent output for unsupported facts, missing/weak citations, source quality, date consistency, and clearly stated uncertainty. Then review the Coding Agent output only if the user requested software; if Coding Agent says NOT REQUIRED for a research-only task, do not penalize it. For requested code, check requirements, completeness, likely bugs, and security/privacy concerns. Do NOT rewrite the deliverable or generate replacement code. Return PASS or NEEDS FIXES, then a short numbered list. Never claim you executed tests or independently verified facts that were not checked.",
+        "USER REQUIREMENTS:\n" + task + "\n\nRESEARCH REPORT:\n" + research.slice(0, 10000) + "\n\nCODING AGENT OUTPUT:\n" +
+        coding.slice(0, 18000) + "\n\nReview both outputs against the user request. Be specific and do not create a second implementation.",
         1200
       );
 
       const final = await run(
         "AI CEO — Final Report",
-        "You are the CEO writing the final handoff. Do not reproduce the code or repeat every agent report. State what the team produced, the review status, limitations, and one next step. Clearly distinguish generated output from anything actually tested or deployed.",
+        "You are the CEO writing the final handoff. Do not reproduce code or repeat every agent report. State what research was produced, whether implementation was requested and completed or not required, the review status, limitations, and one next step. Clearly distinguish generated output from anything actually tested or deployed.",
         "USER TASK:\n" + task + "\n\nPLAN:\n" + plan +
         "\n\nRESEARCH:\n" + research.slice(0, 4500) +
-        "\n\nREVIEW:\n" + review + "\n\nSummarize the handoff in under 200 words.",
+        "\n\nCODING OUTPUT:\n" + coding.slice(0, 2500) + "\n\nREVIEW:\n" + review + "\n\nSummarize the handoff in under 200 words.",
         700
       );
 
