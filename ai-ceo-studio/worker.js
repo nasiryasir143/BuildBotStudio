@@ -12,7 +12,12 @@ function decodeHtml(value = "") {
     .replace(/&#39;|&#x27;/g, "'")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
-    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)));
+    .replace(/&#(\d+);/g, (_, n) => {
+      const point = Number(n);
+      return point <= 0x10ffff && !(point >= 0xd800 && point <= 0xdfff)
+        ? String.fromCodePoint(point)
+        : " ";
+    });
 }
 
 function cleanText(value = "") {
@@ -32,6 +37,8 @@ function isSafePublicUrl(raw) {
     const u = new URL(raw), h = u.hostname.toLowerCase();
     if (!["https:","http:"].includes(u.protocol) || u.username || u.password) return false;
     if (h === "localhost" || h.endsWith(".localhost") || h.endsWith(".local")) return false;
+    // Do not request literal IP addresses or IPv6 hosts from untrusted search results.
+    if (h.includes(":") || /^\d{1,3}(?:\.\d{1,3}){3}$/.test(h) || !h.includes(".")) return false;
     if (/^(127\.|10\.|192\.168\.|169\.254\.|0\.)/.test(h) || /^172\.(1[6-9]|2[0-9]|3[01])\./.test(h)) return false;
     return true;
   } catch { return false; }
@@ -52,9 +59,12 @@ async function inspectSource(item) {
   const checked={...item,linkStatus:"not_checked",httpStatus:null,finalUrl:item.url,pageTitle:"",publishedDate:item.publishedDate || ""};
   if(!isSafePublicUrl(item.url)){checked.linkStatus="unsafe_or_invalid_url";return checked;}
   try {
-    const response=await fetch(item.url,{headers:{"User-Agent":"Mozilla/5.0 (compatible; AICEOStudio/1.0)","Accept":"text/html,application/pdf,application/xml,text/plain,*/*"},redirect:"follow",signal:AbortSignal.timeout(10000)});
+    const response=await fetch(item.url,{headers:{"User-Agent":"Mozilla/5.0 (compatible; AICEOStudio/1.0)","Accept":"text/html,application/pdf,application/xml,text/plain,*/*"},redirect:"manual",signal:AbortSignal.timeout(10000)});
     checked.httpStatus=response.status; checked.finalUrl=response.url||item.url;
-    if(!isSafePublicUrl(checked.finalUrl)){checked.linkStatus="redirected_to_unsafe_url";return checked;}
+    if (response.status >= 300 && response.status < 400) {
+      checked.linkStatus = "redirect_not_followed";
+      return checked;
+    }
     checked.linkStatus=response.ok?"working":"broken";
     const type=response.headers.get("content-type")||"";
     if(response.ok&&/(text\/html|application\/xml|text\/xml|text\/plain)/i.test(type)){
@@ -126,7 +136,12 @@ export default {
     if (!authorized(request, env)) return reply({ error: "Unauthorized. Check your access token." }, 401);
 
     try {
-      const body = await request.json();
+      let body;
+      try {
+        body = await request.json();
+      } catch {
+        return reply({ error: "Request body must be valid JSON." }, 400);
+      }
       const task = String(body.task || "").trim();
       if (!task) return reply({ error: "Enter a task first." }, 400);
       if (task.length > 4000) return reply({ error: "Task limit is 4000 characters." }, 400);
@@ -261,28 +276,23 @@ export default {
         1200
       );
 
-      let final = await ask(
-        env,
-        "You are the CEO writing the final handoff in " + language + ". Whenever live results exist, include useful findings and a source list. Do not return only a failure label because review says NEEDS FIXES; present cautious provisional findings, disclose broken/unverified links, missing dates, and review issues. Use only supplied evidence. Never infer dates from URL IDs or invent facts.",
-        "USER TASK:\n" + task + "\n\nPLAN:\n" + plan +
-        "\n\nRESEARCH:\n" + research.slice(0, 4500) +
-        "\n\nCODING OUTPUT:\n" + coding.slice(0, 2500) + "\n\nREVIEW:\n" + review + "\n\nLIVE SEARCH STATUS: " + webSearchStatus + "; LIVE SOURCE COUNT: " + webResults.length + "\n\nWrite a useful report in " + language + " with findings, caveats, review issues, source titles and direct links. Include all supplied results and their verification status. Keep under 350 words.",
-        700
-      );
-
+      let final;
       if (webResults.length === 0) {
+        // Avoid an unnecessary fifth model request when no live sources exist.
         final = language === "Urdu"
-          ? (webSearchStatus === "disabled"
-              ? "ویب سرچ ابھی فعال نہیں ہے۔ کوئی لائیو تلاش نہیں کی گئی، اس لیے قابلِ تصدیق نتائج پیش نہیں کیے جا سکتے۔"
-              : webSearchStatus === "unavailable"
-                ? "ویب سرچ سروس سے رابطہ نہیں ہو سکا۔ Cloudflare AI Gateway کے کریڈٹس یا Provider Key اور Worker binding کی ترتیب چیک کرنا ہوگی۔"
-                : "لائیو سرچ میں کوئی متعلقہ نتیجہ نہیں ملا، اس لیے قابلِ تصدیق نتائج پیش نہیں کیے جا سکتے۔")
-          : (webSearchStatus === "disabled"
-              ? "WEB SEARCH IS DISABLED. No live search was run, so no verifiable findings can be presented."
-              : webSearchStatus === "unavailable"
-                ? "WEB SEARCH IS UNAVAILABLE. Check Cloudflare AI Gateway credits or provider-key configuration and the Worker binding."
-                : "The live search returned no relevant results, so no verifiable findings can be presented.");
+          ? "ویب سرچ کی حیثیت: " + (webSearchStatus === "disabled" ? "بند ہے؛ کوئی لائیو تلاش نہیں کی گئی۔" : webSearchStatus === "unavailable" ? "دستیاب نہیں ہو سکی؛ کوئی قابلِ تصدیق نتیجہ نہیں ملا۔" : "کوئی متعلقہ نتیجہ نہیں ملا۔") +
+            "\n\nAI CEO منصوبہ:\n" + plan + "\n\nریسرچ رپورٹ:\n" + research + "\n\nکوڈنگ رپورٹ:\n" + coding + "\n\nجائزہ رپورٹ:\n" + review
+          : "Web search status: " + (webSearchStatus === "disabled" ? "disabled; no live search was run." : webSearchStatus === "unavailable" ? "unavailable; no verifiable result was retrieved." : "no relevant result was found.") +
+            "\n\nAI CEO plan:\n" + plan + "\n\nResearch report:\n" + research + "\n\nCoding report:\n" + coding + "\n\nReview report:\n" + review;
       } else {
+        final = await ask(
+          env,
+          "You are the CEO writing the final handoff in " + language + ". Whenever live results exist, include useful findings and a source list. Do not return only a failure label because review says NEEDS FIXES; present cautious provisional findings, disclose broken/unverified links, missing dates, and review issues. Use only supplied evidence. Never infer dates from URL IDs or invent facts.",
+          "USER TASK:\n" + task + "\n\nPLAN:\n" + plan +
+          "\n\nRESEARCH:\n" + research.slice(0, 4500) +
+          "\n\nCODING OUTPUT:\n" + coding.slice(0, 2500) + "\n\nREVIEW:\n" + review + "\n\nLIVE SEARCH STATUS: " + webSearchStatus + "; LIVE SOURCE COUNT: " + webResults.length + "\n\nWrite a useful report in " + language + " with findings, caveats, review issues, source titles and direct links. Include all supplied results and their verification status. Keep under 350 words.",
+          700
+        );
         final += (language === "Urdu" ? "\n\nذرائع اور لنکس کی جانچ:\n" : "\n\nSources and link checks:\n") +
           webResults.map((item,index) =>
             (index+1)+". "+item.title+"\n"+item.url+
