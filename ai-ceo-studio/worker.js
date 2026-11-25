@@ -40,9 +40,9 @@ function isRelevantSearchResult(item, query) {
   const stopWords = new Set(["with","from","that","this","about","latest","recent","research","future","report","reports","sources","source","provide","find","online","using","into","their","there","what","when","where","which","will","have","been","2026","2025"]);
   const terms = [...new Set((query.toLowerCase().match(/[a-z][a-z0-9-]{3,}/g) || [])
     .filter(word => !stopWords.has(word)))];
-  // For Urdu and other non-Latin queries, let the search engine's own
-  // query matching stand; the Latin-only tokenizer cannot score those terms.
-  if (!terms.length) return /[^\u0000-\u007f]/.test(query) && Boolean(item.title && item.url);
+  // Reject unrelated search-engine noise. Queries are normalized to English
+  // before search, so require at least two meaningful query terms to appear.
+  if (!terms.length) return false;
   const matches = terms.filter(word => haystack.includes(word));
   return matches.length >= Math.min(2, terms.length);
 }
@@ -179,8 +179,13 @@ export default {
       let webResults = [];
       let webSearchStatus = "not_needed";
       try {
-        const searchBrief = task.replace(/\s+/g, " ").trim().slice(0, 420);
-        webResults = await searchWeb(searchBrief);
+        const searchBrief = await ask(
+          env,
+          "Convert the user's request into one concise English web search query. Preserve the exact country, subject, and requested date range. Do not answer the request. Output only the search query, with no quotes or explanation.",
+          task,
+          180
+        );
+        webResults = await searchWeb(searchBrief.replace(/^["']|["']$/g, "").trim().slice(0, 420));
         webSearchStatus = webResults.length ? "success" : "no_results";
       } catch (error) {
         webSearchStatus = "unavailable";
