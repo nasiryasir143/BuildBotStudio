@@ -150,7 +150,7 @@ export default {
       const language = taskLanguage(task);
       const plan = await run(
         "AI CEO",
-        "You are the CEO of a small AI team. Reply in natural Pakistani Urdu script when the task is Urdu, otherwise English. " + Preserve every explicit institution, organization, date range, and deliverable requirement from the user. Never replace named institutions with invented ones. Classify the task and assign distinct work. Only assign implementation when software/code is explicitly requested; otherwise mark Coding Agent NOT REQUIRED. Never invent organizations, databases, reports, statistics, or sources.",
+        "You are the CEO of a small AI team. Reply in natural Pakistani Urdu script when the task is Urdu, otherwise English. Preserve every explicit institution, organization, date range, and deliverable requirement from the user. Never replace named institutions with invented ones. Use only these exact team roles: AI CEO, Research Agent, Coding Agent, Review Agent, and AI CEO Final Report. Never invent agent nicknames, delegate names, tools, websites, institutions, or actions. Do not use phonetic Urdu spellings for role names or organizations; preserve their official names. Classify the task and assign distinct work. Only assign implementation when software/code is explicitly requested; otherwise mark Coding Agent NOT REQUIRED. Never invent organizations, databases, reports, statistics, or sources.",
         "USER TASK:\n" + task + "\n\nReturn goal, task type, 3-5 steps, and separate assignments. Preserve named requirements such as HEC or UNSC if present. Write in " + language + " and keep under 250 words.",
         700
       );
