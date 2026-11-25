@@ -33,7 +33,7 @@ function unwrapSearchUrl(href) {
 }
 
 async function searchWeb(query) {
-  const q = (query + " Pakistan solar energy NEPRA Ministry of Energy").slice(0, 260);
+  const q = query.replace(/\\s+/g, " ").trim().slice(0, 260);
   const endpoints = [
     "https://www.bing.com/search?format=rss&q=" + encodeURIComponent(q),
     "https://html.duckduckgo.com/html/?q=" + encodeURIComponent(q)
@@ -161,7 +161,7 @@ export default {
       let webResults = [];
       let webSearchStatus = "not_needed";
       try {
-        webResults = await searchWeb(task);
+        webResults = await searchWeb(plan + "\\n" + task);
         webSearchStatus = webResults.length ? "success" : "no_results";
       } catch (error) {
         webSearchStatus = "unavailable";
