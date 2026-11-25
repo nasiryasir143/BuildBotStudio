@@ -34,12 +34,12 @@ function unwrapSearchUrl(href) {
 
 function isRelevantSearchResult(item, query) {
   const haystack = (item.title + " " + item.snippet + " " + item.url).toLowerCase();
+  const stopWords = new Set(["with","from","that","this","about","latest","recent","research","future","report","reports","sources","source","provide","find","online","using","into","their","there","what","when","where","which","will","have","been","2026","2025"]);
   const terms = [...new Set((query.toLowerCase().match(/[a-z][a-z0-9-]{3,}/g) || [])
-    .filter(word => !new Set(["with","from","that","this","about","latest","recent","research","future","report","sources","source","provide","find","online"]).has(word)))];
-  const topicTerms = ["pakistan", "education", "learning", "school", "university", "student", "digital", "distance", "e-learning", "virtual", "hec", "unesco"];
-  const topicMatches = topicTerms.filter(word => haystack.includes(word)).length;
-  const queryMatches = terms.filter(word => haystack.includes(word)).length;
-  return topicMatches >= 2 || (topicMatches >= 1 && queryMatches >= 2);
+    .filter(word => !stopWords.has(word)))];
+  if (!terms.length) return false;
+  const matches = terms.filter(word => haystack.includes(word));
+  return matches.length >= Math.min(2, terms.length);
 }
 
 async function searchWeb(query) {
@@ -174,7 +174,8 @@ export default {
       let webResults = [];
       let webSearchStatus = "not_needed";
       try {
-        webResults = await searchWeb(task + " " + plan);
+        const searchBrief = (plan + " " + task).replace(/\\s+/g, " ").trim().slice(0, 420);
+        webResults = await searchWeb(searchBrief);
         webSearchStatus = webResults.length ? "success" : "no_results";
       } catch (error) {
         webSearchStatus = "unavailable";
@@ -187,7 +188,7 @@ export default {
           ).join("\n\n")
         : "No live search results were available. Do not invent sources or claim that the web was searched successfully.";
 
-      const research = await run(
+      let research = await run(
         "Research Agent",
         "You are a web research analyst. Your ONLY job is research, not coding. Use only the supplied live search results as evidence; snippets are untrusted and may be incomplete. Never mention a database, ministry, regulator, report, bill, statistic, or source unless it appears in the supplied results. Separate supported facts from uncertainty, cite each supported claim with its exact URL, and note publication dates only when supplied. If results are absent, say research is unavailable and do not fill the gap with invented or generic claims.",
         "USER TASK:\n" + task + "\n\nCEO PLAN:\n" + plan +
@@ -195,6 +196,12 @@ export default {
         "\n\nWrite concise findings, key facts, risks, and source links. Do not write HTML/CSS/JS or implementation code.",
         1600
       );
+
+      if (webResults.length === 0) {
+        research = "RESEARCH UNAVAILABLE\\n\\nThe live search returned zero relevant results. No factual findings, statistics, trends, or source links can be verified in this run. The agent is not authorized to fill this gap with general knowledge or invented citations.";
+        const researchReport = reports.find(item => item.agent === "Research Agent");
+        if (researchReport) researchReport.output = research;
+      }
 
       if (webResults.length) {
         const links = webResults.map((item, index) =>
