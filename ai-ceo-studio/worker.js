@@ -39,8 +39,13 @@ function taskNeedsCode(task = "") {
     /(ویب سائٹ|کوڈ|پروگرام|اسکرپٹ|سافٹ ویئر|ایپ بن|ایپ تیار)/.test(task);
 }
 function taskNeedsLiveEvidence(task = "") {
-  return /\b(20\d{2}|current|currently|latest|recent|today|this year|trend|trends|statistics|stats|data|research|sources?|references?|citations?|reliable|credible|verified|up[- ]to[- ]date)\b/i.test(task) ||
-    /(تازہ|حالیہ|آج|اس سال|رجحان|رجحانات|اعداد|وشمار|مستند|قابلِ اعتماد|ذرائع|حوالہ جات|تحقیق|تصدیق|202\d)/.test(task);
+  // Dynamic facts such as national population require a source even when the user
+  // phrases the request in Roman Urdu (e.g. "Pakistan ki abadi kitni hai").
+  const dynamicFact = /\\b(population|abadi|total abadi|current population|population estimate|kitne (?:log|people)|how many (?:people|residents))\\b/i.test(task) ||
+    /(آبادی|کل آبادی|آبادی کتنی|کتنے لوگ|نفوس)/.test(task);
+  const explicitEvidence = /\\b(20\\d{2}|current|currently|latest|recent|today|this year|trend|trends|statistics|stats|data|research|sources?|references?|citations?|reliable|credible|verified|up[- ]to[- ]date)\\b/i.test(task) ||
+    /(تازہ|حالیہ|آج|اس سال|رجحان|رجحانات|اعداد|وشمار|مستند|قابلِ اعتماد|ذرائع|حوالہ جات|تحقیق|تصدیق|202\\d)/.test(task);
+  return dynamicFact || explicitEvidence;
 }
 function isSafePublicUrl(raw) {
   try {
