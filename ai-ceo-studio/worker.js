@@ -69,16 +69,16 @@ async function inspectSource(item) {
 
 function buildSearchQueries(task, baseQuery) {
   const queries = [baseQuery];
-  if (/\\bHEC\\b/i.test(task)) {
+  if (/\bHEC\b/i.test(task)) {
     queries.push("Pakistan HEC official online education digital learning policy reports 2024 2026");
   }
-  if (/\\bPIE\\b/i.test(task) || /Pakistan Institute of Education/i.test(task)) {
+  if (/\bPIE\b/i.test(task) || /Pakistan Institute of Education/i.test(task)) {
     queries.push('"Pakistan Institute of Education" Pakistan online education digital learning 2024 2026');
   }
   if (queries.length === 1) {
     queries.push("Pakistan online education digital learning research report 2024 2026");
   }
-  return [...new Set(queries.map(q => q.replace(/\\s+/g, " ").trim()).filter(Boolean))].slice(0, 3);
+  return [...new Set(queries.map(q => q.replace(/\s+/g, " ").trim()).filter(Boolean))].slice(0, 3);
 }
 
 async function ask(env, system, user, maxTokens = 1200) {
@@ -201,7 +201,9 @@ export default {
             "\nPublication date from page: " + (item.publishedDate || "not found") +
             "\nSearch summary: " + (item.snippet || "No summary supplied")
           ).join("\n\n")
-        : "No live search results were available. Do not invent sources or claim that the web was searched successfully.";
+        : (webSearchStatus === "disabled"
+            ? "Web search is disabled by configuration. Do not invent sources."
+            : "No live search results were available. Do not invent sources or claim that the web was searched successfully.");
 
       let research = await run(
         "Research Agent",
@@ -213,7 +215,17 @@ export default {
       );
 
       if (webResults.length === 0) {
-        research = "RESEARCH UNAVAILABLE\\n\\nThe live search returned zero relevant results. No factual findings, statistics, trends, or source links can be verified in this run. The agent is not authorized to fill this gap with general knowledge or invented citations.";
+        research = language === "Urdu"
+          ? (webSearchStatus === "disabled"
+              ? "ویب سرچ ابھی بند ہے۔ کوئی لائیو تلاش نہیں کی گئی؛ براہِ کرم سرچ فعال ہونے تک نتائج یا ذرائع کا دعویٰ نہ کریں۔"
+              : webSearchStatus === "unavailable"
+                ? "ویب سرچ سروس دستیاب نہیں ہو سکی۔ کوئی قابلِ تصدیق نتیجہ حاصل نہیں ہوا۔" + (webSearchError ? "\n\nتکنیکی وجہ: " + webSearchError : "")
+                : "لائیو سرچ میں کوئی متعلقہ نتیجہ نہیں ملا۔ کوئی حقیقت، تاریخ یا ذریعہ خود سے شامل نہیں کیا گیا۔")
+          : (webSearchStatus === "disabled"
+              ? "WEB SEARCH DISABLED. No live search was run. Do not invent results or sources."
+              : webSearchStatus === "unavailable"
+                ? "WEB SEARCH UNAVAILABLE. No verifiable results were retrieved." + (webSearchError ? "\n\nTechnical detail: " + webSearchError : "")
+                : "NO RELEVANT RESULTS. The live search returned no relevant sources. No facts, dates, or citations were invented.");
         const researchReport = reports.find(item => item.agent === "Research Agent");
         if (researchReport) researchReport.output = research;
       }
@@ -254,8 +266,16 @@ export default {
 
       if (webResults.length === 0) {
         final = language === "Urdu"
-          ? "تحقیق نامکمل ہے۔ اس کوشش میں کوئی متعلقہ لائیو سرچ نتیجہ نہیں ملا، اس لیے قابلِ تصدیق نتائج پیش نہیں کیے جا سکتے۔"
-          : "RESEARCH INCOMPLETE. The live search returned no relevant results, so no evidence-based findings can be presented.";
+          ? (webSearchStatus === "disabled"
+              ? "ویب سرچ ابھی فعال نہیں ہے۔ کوئی لائیو تلاش نہیں کی گئی، اس لیے قابلِ تصدیق نتائج پیش نہیں کیے جا سکتے۔"
+              : webSearchStatus === "unavailable"
+                ? "ویب سرچ سروس سے رابطہ نہیں ہو سکا۔ Cloudflare AI Gateway کے کریڈٹس یا Provider Key اور Worker binding کی ترتیب چیک کرنا ہوگی۔"
+                : "لائیو سرچ میں کوئی متعلقہ نتیجہ نہیں ملا، اس لیے قابلِ تصدیق نتائج پیش نہیں کیے جا سکتے۔")
+          : (webSearchStatus === "disabled"
+              ? "WEB SEARCH IS DISABLED. No live search was run, so no verifiable findings can be presented."
+              : webSearchStatus === "unavailable"
+                ? "WEB SEARCH IS UNAVAILABLE. Check Cloudflare AI Gateway credits or provider-key configuration and the Worker binding."
+                : "The live search returned no relevant results, so no verifiable findings can be presented.");
       } else {
         final += (language === "Urdu" ? "\n\nذرائع اور لنکس کی جانچ:\n" : "\n\nSources and link checks:\n") +
           webResults.map((item,index) =>
